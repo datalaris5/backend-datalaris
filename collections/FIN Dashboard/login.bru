@@ -1,0 +1,27 @@
+meta {
+  name: login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/v1/api/login
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email" : "superadmin@tokoa.com",
+    "Password" :"P@ssw0rd"
+  }
+}
+
+script:post-response {
+  var jsonObject = res.getBody();
+  bru.setEnvVar("token",jsonObject.data.token);
+}
+
+settings {
+  encodeUrl: true
+}

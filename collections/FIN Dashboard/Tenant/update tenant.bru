@@ -1,0 +1,31 @@
+meta {
+  name: update tenant
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/v1/api/tenants
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+      "id": "0e1badbe-d5dc-44a5-bda5-3d44726b9e",
+      "name": "STORE AHAY",
+      "password_min_length": 0,
+      "password_requires_upper": false,
+      "password_requires_number": false,
+      "password_requires_symbol": false,
+      "password_history_count": 0
+    }
+}
+
+settings {
+  encodeUrl: true
+}
