@@ -38,7 +38,7 @@ CREATE TABLE users (
 
 CREATE TABLE shopee_data_upload_details (
 	id bigserial PRIMARY KEY,
-	tenant_id BIGINT REFERENCES tenants(id) ON DELETE CASCADE,    
+	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,    
 	tanggal date,
 	total_penjualan NUMERIC(18,2),
 	total_pesanan int,
@@ -47,6 +47,7 @@ CREATE TABLE shopee_data_upload_details (
 	total_pengunjung int,
 	tingkat_konversi_harian NUMERIC(5,2),
 	pesanan_dibatalkan int,
+	penjualan_dibatalkan int,
 	pesanan_dikembalikan int,
 	penjualan_dikembalikan int,
 	pembeli int,
@@ -62,7 +63,7 @@ CREATE TABLE shopee_data_upload_details (
 
 CREATE TABLE shopee_data_upload_summaries (
 	id bigserial PRIMARY KEY,
-	tenant_id BIGINT REFERENCES tenants(id) ON DELETE CASCADE,    
+	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,    
 	tanggal date,
 	total_penjualan NUMERIC(18,2),
 	total_pesanan int,
@@ -71,6 +72,7 @@ CREATE TABLE shopee_data_upload_summaries (
 	total_pengunjung int,
 	tingkat_konversi_harian NUMERIC(5,2),
 	pesanan_dibatalkan int,
+	penjualan_dibatalkan int,
 	pesanan_dikembalikan int,
 	penjualan_dikembalikan int,
 	pembeli int,

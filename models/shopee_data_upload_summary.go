@@ -8,7 +8,7 @@ import (
 
 type ShopeeDataUploadSummary struct {
 	common.BaseModel
-	TenantID                 uint            `gorm:"column:tenant_id"`
+	StoreID                  uint            `gorm:"column:store_id"`
 	TotalPenjualan           decimal.Decimal `gorm:"column:total_penjualan;type:numeric(18,2)"`
 	TotalPesanan             int             `gorm:"column:total_pesanan"`
 	PenjualanPerPesanan      decimal.Decimal `gorm:"column:penjualan_per_pesanan;type:numeric(18,2)"`

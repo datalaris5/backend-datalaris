@@ -23,11 +23,17 @@ import (
 )
 
 func UploadExcel(c *gin.Context) {
-	tenantID := utils.GetTenantId(c)
+	storeId := c.Param("id")
 	// c.FormFile hanya mengembalikan 2 nilai: *multipart.FileHeader, error
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		utils.Error(c, http.StatusBadRequest, constant.ErrorUploadFile, nil)
+		return
+	}
+
+	_, err = services.GetWhereFirst[models.Store]("id = ?", storeId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.StoreConst+constant.ErrorNotFound, nil)
 		return
 	}
 
@@ -78,14 +84,14 @@ func UploadExcel(c *gin.Context) {
 
 	db := config.DB
 	err = services.WithTransaction(db.WithContext(ctx), func(tx *gorm.DB) error {
-		summary, err := ConvertSummaryFromRow(summaries, tenantID)
+		summary, err := ConvertSummaryFromRow(summaries, storeId)
 		_, err = services.Save[models.ShopeeDataUploadSummary](*summary, tx)
 		if err != nil {
 			return err
 		}
 
 		for i := range details {
-			detail, err := ConvertDetailFromRow(details[i], tenantID)
+			detail, err := ConvertDetailFromRow(details[i], storeId)
 			_, err = services.Save[models.ShopeeDataUploadDetail](*detail, tx)
 			if err != nil {
 				return err
@@ -150,14 +156,14 @@ func readExcelShopee(path string) ([]string, [][]string) {
 
 }
 
-func ConvertSummaryFromRow(row []string, tenantID any) (*models.ShopeeDataUploadSummary, error) {
+func ConvertSummaryFromRow(row []string, storeId string) (*models.ShopeeDataUploadSummary, error) {
 	// pastikan minimal ada kolom
 	if len(row) < 16 {
 		return nil, fmt.Errorf("jumlah kolom summary tidak sesuai")
 	}
 
 	return &models.ShopeeDataUploadSummary{
-		TenantID:                 tenantID.(uint),
+		StoreID:                  utils.ParseUintParam(storeId),
 		TotalPenjualan:           decimal.RequireFromString(CleanNumber(row[1])),
 		TotalPesanan:             toInt(row[2]),
 		PenjualanPerPesanan:      decimal.RequireFromString(CleanNumber(row[3])),
@@ -176,7 +182,7 @@ func ConvertSummaryFromRow(row []string, tenantID any) (*models.ShopeeDataUpload
 	}, nil
 }
 
-func ConvertDetailFromRow(row []string, tenantID any) (*models.ShopeeDataUploadDetail, error) {
+func ConvertDetailFromRow(row []string, storeId string) (*models.ShopeeDataUploadDetail, error) {
 	// pastikan minimal ada kolom
 	if len(row) < 16 {
 		return nil, fmt.Errorf("jumlah kolom summary tidak sesuai")
@@ -189,7 +195,7 @@ func ConvertDetailFromRow(row []string, tenantID any) (*models.ShopeeDataUploadD
 	}
 
 	return &models.ShopeeDataUploadDetail{
-		TenantID:                 tenantID.(uint),
+		StoreID:                  utils.ParseUintParam(storeId),
 		Tanggal:                  tanggal,
 		TotalPenjualan:           decimal.RequireFromString(CleanNumber(row[1])),
 		TotalPesanan:             toInt(row[2]),

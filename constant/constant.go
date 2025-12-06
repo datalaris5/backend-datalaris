@@ -58,6 +58,7 @@ const RoleConst = "Role"
 const UserConst = "User"
 const LovConst = "Lov"
 const StoreConst = "Store"
+const DashboardTinjauanConst = "Dashboard Tinjauan"
 const MarketplaceConst = "Marketplace"
 
 // Status

@@ -9,7 +9,7 @@ import (
 
 type ShopeeDataUploadDetail struct {
 	common.BaseModel
-	TenantID                 uint            `gorm:"column:tenant_id"`
+	StoreID                  uint            `gorm:"column:store_id"`
 	Tanggal                  time.Time       `gorm:"column:tanggal"`
 	TotalPenjualan           decimal.Decimal `gorm:"column:total_penjualan;type:numeric(18,2)"`
 	TotalPesanan             int             `gorm:"column:total_pesanan"`

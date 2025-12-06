@@ -20,3 +20,9 @@ type RequestUser struct {
 type RequestTenantId struct {
 	TenantID *uint `json:"tenant_id"`
 }
+
+type RequestDashboardTinjauan struct {
+	StoreId  uint   `json:"store_id"`
+	DateFrom string `json:"date_from"`
+	DateTo   string `json:"date_to"`
+}
