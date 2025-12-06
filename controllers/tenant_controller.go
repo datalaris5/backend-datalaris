@@ -35,7 +35,6 @@ func CreateTenant(c *gin.Context) {
 
 		role := models.Role{
 			Name:     "SUPERADMIN " + savedInput.Name,
-			TenantID: &savedInput.ID,
 			RoleType: constant.RoleType.TenantAdmin,
 		}
 

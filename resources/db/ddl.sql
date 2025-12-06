@@ -84,4 +84,30 @@ CREATE TABLE shopee_data_upload_summaries (
 	updated_by int8 NULL
 );
 
+CREATE TABLE stores (
+	id bigserial PRIMARY KEY,
+	tenant_id BIGINT REFERENCES tenants(id) ON DELETE CASCADE,
+	marketplace_id BIGINT REFERENCES marketplaces(id) ON DELETE CASCADE,
+	"name" varchar(255) NOT NULL,
+	is_active bool DEFAULT true,
+	is_deleted bool DEFAULT false,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	created_by int8 NULL,
+	updated_by int8 NULL
+);
+
+CREATE TABLE marketplaces (
+	id bigserial PRIMARY KEY,
+	"name" varchar(255) NOT NULL,
+	is_active bool DEFAULT true,
+	is_deleted bool DEFAULT false,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	created_by int8 NULL,
+	updated_by int8 NULL
+);
+
+
+
 

@@ -19,5 +19,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	auth.Use(middlewares.AuthMiddlewareWithDB())
 	{
 		auth.POST("/upload", controllers.UploadExcel)
+
+		auth.POST("/store", controllers.CreateStore)
+		auth.PUT("/store", controllers.UpdateStore)
+		auth.GET("/store/:id", controllers.GetStoreById)
+
+		auth.POST("/marketplaces", controllers.CreateStore)
+		auth.PUT("/marketplaces", controllers.UpdateStore)
+		auth.GET("/marketplaces/:id", controllers.GetStoreById)
 	}
 }

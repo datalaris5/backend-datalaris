@@ -55,6 +55,8 @@ const TenantConst = "Tenant"
 const RoleConst = "Role"
 const UserConst = "User"
 const LovConst = "Lov"
+const StoreConst = "Store"
+const MarketplaceConst = "Marketplace"
 
 // Status
 const ActiveConst = "active"

@@ -50,7 +50,6 @@ func Seed(db *gorm.DB) {
 		tenantSuperTokoA = models.Role{
 			Name:     "superadmin_toko_a",
 			RoleType: constant.RoleType.TenantSuper,
-			TenantID: &tenantTokoA.ID,
 		}
 		if err := db.Create(&tenantSuperTokoA).Error; err != nil {
 			log.Fatalf("❌ Failed to create role superadmin_toko_a: %v", err)
@@ -65,7 +64,6 @@ func Seed(db *gorm.DB) {
 		tenantSuperTokoB = models.Role{
 			Name:     "superadmin_toko_b",
 			RoleType: constant.RoleType.TenantSuper,
-			TenantID: &tenantTokoB.ID,
 		}
 		if err := db.Create(&tenantSuperTokoB).Error; err != nil {
 			log.Fatalf("❌ Failed to create role superadmin_toko_b: %v", err)
@@ -80,7 +78,6 @@ func Seed(db *gorm.DB) {
 		roleAdminTokoA = models.Role{
 			Name:     "admin_toko_a",
 			RoleType: constant.RoleType.TenantAdmin,
-			TenantID: &tenantTokoA.ID,
 		}
 		if err := db.Create(&roleAdminTokoA).Error; err != nil {
 			log.Fatalf("❌ Failed to create role admin_toko_a: %v", err)
@@ -95,7 +92,6 @@ func Seed(db *gorm.DB) {
 		roleAdminTokoB = models.Role{
 			Name:     "admin_toko_b",
 			RoleType: constant.RoleType.TenantAdmin,
-			TenantID: &tenantTokoB.ID,
 		}
 		if err := db.Create(&roleAdminTokoB).Error; err != nil {
 			log.Fatalf("❌ Failed to create role admin_toko_b: %v", err)
