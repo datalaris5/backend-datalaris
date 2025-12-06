@@ -5,4 +5,5 @@ type PaginationRequest struct {
 	Limit    int     `json:"limit" binding:"required"`
 	Search   *string `json:"search"`
 	TenantID *uint   `json:"tenant_id"`
+	Status   *string `json:"status"`
 }

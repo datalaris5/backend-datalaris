@@ -1,0 +1,26 @@
+meta {
+  name: update
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/v1/api/admin/marketplaces
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+      "id": 1,
+      "name": "shopee"
+    }
+}
+
+settings {
+  encodeUrl: true
+}

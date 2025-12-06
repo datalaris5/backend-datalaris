@@ -32,7 +32,9 @@ const SuccessFetch = " Fetched Successfully"
 const SuccessSaved = " Saved Successfully"
 const SuccessDelete = " Delete Successfully"
 const SuccessUpdate = " Update Successfully"
-const SuccessUploadFile = "Upload File Successfully"
+const SuccessUploadFile = " Upload File Successfully"
+const SuccessActive = " Activated Successfully"
+const SuccessInactive = " Inactivated Successfully"
 
 // Error
 const ErrorNotFound = " Not Found"

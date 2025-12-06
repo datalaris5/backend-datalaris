@@ -1,0 +1,31 @@
+meta {
+  name: get by id
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/v1/api/admin/marketplaces/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 2
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "page":1,
+    "limit":10,
+    "search":""
+  }
+}
+
+settings {
+  encodeUrl: true
+}

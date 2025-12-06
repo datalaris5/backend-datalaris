@@ -1,0 +1,32 @@
+meta {
+  name: active/inactive
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/v1/api/admin/marketplaces/:id/status/:status
+  body: none
+  auth: bearer
+}
+
+params:path {
+  status: active
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "page":1,
+    "limit":10,
+    "search":""
+  }
+}
+
+settings {
+  encodeUrl: true
+}

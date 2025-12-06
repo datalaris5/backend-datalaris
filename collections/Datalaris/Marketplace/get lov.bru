@@ -1,0 +1,27 @@
+meta {
+  name: get lov
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/v1/api/admin/marketplaces/lov
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "page":1,
+    "limit":10,
+    "search":""
+  }
+}
+
+settings {
+  encodeUrl: true
+}

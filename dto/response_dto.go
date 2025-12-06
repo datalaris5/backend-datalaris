@@ -1,7 +1,7 @@
 package dto
 
 type ResponseLov struct {
-	Id    string `json:"id"`
+	Id    uint   `json:"id"`
 	Value string `json:"value"`
 }
 
