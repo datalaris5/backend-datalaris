@@ -92,6 +92,16 @@ func UploadExcel(c *gin.Context) {
 			}
 		}
 
+		var history models.HistoryDataUpload
+		history.StoreId = utils.ParseUintParam(storeId)
+		history.Filename = fileHeader.Filename
+		history.Status = constant.Success
+
+		_, err = services.Save[models.HistoryDataUpload](history, tx)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 

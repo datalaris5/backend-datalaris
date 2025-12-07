@@ -35,6 +35,8 @@ const SuccessUpdate = " Update Successfully"
 const SuccessUploadFile = " Upload File Successfully"
 const SuccessActive = " Activated Successfully"
 const SuccessInactive = " Inactivated Successfully"
+const Success = "success"
+const Failed = "failed"
 
 // Error
 const ErrorNotFound = " Not Found"
@@ -60,6 +62,7 @@ const LovConst = "Lov"
 const StoreConst = "Store"
 const DashboardTinjauanConst = "Dashboard Tinjauan"
 const MarketplaceConst = "Marketplace"
+const HistoryDataUpload = "History Data Upload"
 
 // Status
 const ActiveConst = "active"

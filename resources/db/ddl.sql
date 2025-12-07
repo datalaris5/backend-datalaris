@@ -61,25 +61,11 @@ CREATE TABLE shopee_data_upload_details (
 	updated_by int8 NULL
 );
 
-CREATE TABLE shopee_data_upload_summaries (
+CREATE TABLE history_data_uploads (
 	id bigserial PRIMARY KEY,
 	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,    
-	tanggal date,
-	total_penjualan NUMERIC(18,2),
-	total_pesanan int,
-	penjualan_per_pesanan NUMERIC(18, 2),
-	produk_klik int,
-	total_pengunjung int,
-	tingkat_konversi_harian NUMERIC(5,2),
-	pesanan_dibatalkan int,
-	penjualan_dibatalkan int,
-	pesanan_dikembalikan int,
-	penjualan_dikembalikan int,
-	pembeli int,
-	total_pembeli_baru int,
-	total_pembeli_saat_ini int,
-	total_potensi_pembeli int,
-	tingkat_pembelian_berulang NUMERIC(5,2),
+	filename VARCHAR(250),
+	status VARCHAR(20),
 	created_at timestamptz DEFAULT now() NULL,
 	updated_at timestamptz DEFAULT now() NULL,
 	created_by int8 NULL,
