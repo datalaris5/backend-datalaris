@@ -72,7 +72,7 @@ func UploadExcel(c *gin.Context) {
 		return
 	}
 
-	summaries, details := readExcelShopee(dstPath)
+	details := readExcelShopee(dstPath)
 
 	userID, ok := c.Get("user_id")
 	if !ok {
@@ -84,12 +84,6 @@ func UploadExcel(c *gin.Context) {
 
 	db := config.DB
 	err = services.WithTransaction(db.WithContext(ctx), func(tx *gorm.DB) error {
-		summary, err := ConvertSummaryFromRow(summaries, storeId)
-		_, err = services.Save[models.ShopeeDataUploadSummary](*summary, tx)
-		if err != nil {
-			return err
-		}
-
 		for i := range details {
 			detail, err := ConvertDetailFromRow(details[i], storeId)
 			_, err = services.Save[models.ShopeeDataUploadDetail](*detail, tx)
@@ -109,11 +103,11 @@ func UploadExcel(c *gin.Context) {
 	utils.Success(c, constant.SuccessUploadFile, nil)
 }
 
-func readExcelShopee(path string) ([]string, [][]string) {
+func readExcelShopee(path string) [][]string {
 	f, err := excelize.OpenFile(path)
 	if err != nil {
 		fmt.Println("Error baca excel:", err)
-		return nil, nil
+		return nil
 	}
 
 	sheet := "Pesanan Siap Dikirim"
@@ -130,56 +124,27 @@ func readExcelShopee(path string) ([]string, [][]string) {
 
 	if !found {
 		fmt.Println("Sheet", sheet, "tidak ditemukan")
-		return nil, nil
+		return nil
 	}
 
 	rows, err := f.GetRows(sheet)
 	if err != nil {
 		fmt.Println("Gagal baca rows:", err)
-		return nil, nil
+		return nil
 	}
 
-	var summaries []string
 	var details [][]string
 
 	for i := range rows {
-		if i == 0 || i == 2 || i == 3 {
+		if i == 0 || i == 1 || i == 2 || i == 3 {
 			continue
-		} else if i == 1 {
-			summaries = rows[i]
 		} else {
 			details = append(details, rows[i])
 		}
 	}
 
-	return summaries, details
+	return details
 
-}
-
-func ConvertSummaryFromRow(row []string, storeId string) (*models.ShopeeDataUploadSummary, error) {
-	// pastikan minimal ada kolom
-	if len(row) < 16 {
-		return nil, fmt.Errorf("jumlah kolom summary tidak sesuai")
-	}
-
-	return &models.ShopeeDataUploadSummary{
-		StoreID:                  utils.ParseUintParam(storeId),
-		TotalPenjualan:           decimal.RequireFromString(CleanNumber(row[1])),
-		TotalPesanan:             toInt(row[2]),
-		PenjualanPerPesanan:      decimal.RequireFromString(CleanNumber(row[3])),
-		ProdukKlik:               toInt(row[4]),
-		TotalPengunjung:          toInt(row[5]),
-		TingkatKonversiHarian:    decimal.RequireFromString(CleanNumber(row[6])),
-		PesananDibatalkan:        toInt(row[7]),
-		PenjualanDibatalkan:      toInt(row[8]),
-		PesananDikembalikan:      toInt(row[9]),
-		PenjualanDikembalikan:    toInt(row[10]),
-		Pembeli:                  toInt(row[11]),
-		TotalPembeliBaru:         toInt(row[12]),
-		TotalPembeliSaatIni:      toInt(row[13]),
-		TotalPotensiPembeli:      toInt(row[14]),
-		TingkatPembelianBerulang: decimal.RequireFromString(CleanNumber(row[15])),
-	}, nil
 }
 
 func ConvertDetailFromRow(row []string, storeId string) (*models.ShopeeDataUploadDetail, error) {
