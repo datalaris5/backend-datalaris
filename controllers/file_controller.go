@@ -22,7 +22,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func UploadExcel(c *gin.Context) {
+func UploadExcelShopee(c *gin.Context) {
 	storeId := c.Param("id")
 	// c.FormFile hanya mengembalikan 2 nilai: *multipart.FileHeader, error
 	fileHeader, err := c.FormFile("file")
@@ -84,19 +84,44 @@ func UploadExcel(c *gin.Context) {
 
 	db := config.DB
 	err = services.WithTransaction(db.WithContext(ctx), func(tx *gorm.DB) error {
+
+		startDate, err := parseTanggalShopee(details[0][0])
+		if err != nil {
+			return fmt.Errorf("invalid first date: %w", err)
+		}
+		endDate, err := parseTanggalShopee(details[len(details)-1][0])
+		if err != nil {
+			return fmt.Errorf("invalid last date: %w", err)
+		}
+
+		// 1. Delete data existing untuk rentang tanggal upload
+		_, err = tx.
+			Where("store_id = ? AND tanggal BETWEEN ? AND ?", storeId, startDate, endDate).
+			Delete(&models.ShopeeDataUploadDetail{}).
+			Rows()
+		if err != nil {
+			return err
+		}
+
+		// 2. Insert ulang row baru
 		for i := range details {
 			detail, err := ConvertDetailFromRow(details[i], storeId)
+			if err != nil {
+				return err
+			}
+
 			_, err = services.Save[models.ShopeeDataUploadDetail](*detail, tx)
 			if err != nil {
 				return err
 			}
 		}
 
-		var history models.HistoryDataUpload
-		history.StoreId = utils.ParseUintParam(storeId)
-		history.Filename = fileHeader.Filename
-		history.Status = constant.Success
-
+		// 3. Insert history log
+		history := models.HistoryDataUpload{
+			StoreId:  utils.ParseUintParam(storeId),
+			Filename: fileHeader.Filename,
+			Status:   constant.Success,
+		}
 		_, err = services.Save[models.HistoryDataUpload](history, tx)
 		if err != nil {
 			return err

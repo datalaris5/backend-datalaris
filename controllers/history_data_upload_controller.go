@@ -14,7 +14,7 @@ func GetHistoryDataUpload(c *gin.Context) {
 	var result []models.HistoryDataUpload
 	db := config.DB
 	db.Raw(`
-	SELECT *
+	SELECT h.*
 	FROM history_data_uploads h
 	JOIN stores s on s.id = h.store_id
 	JOIN tenants t on t.id = s.tenant_id

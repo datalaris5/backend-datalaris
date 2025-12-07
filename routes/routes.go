@@ -18,7 +18,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	auth := api.Group("/admin")
 	auth.Use(middlewares.AuthMiddlewareWithDB())
 	{
-		auth.POST("/upload/:id", controllers.UploadExcel)
+		auth.POST("/upload/:id", controllers.UploadExcelShopee)
 
 		auth.POST("/dashboard-tinjauan/total-penjualan", controllers.GetDashboardTinjauanTotalPenjualan)
 		auth.POST("/dashboard-tinjauan/total-pesanan", controllers.GetDashboardTinjauanTotalPesanan)
