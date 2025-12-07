@@ -28,3 +28,8 @@ type ResponseTrenPenjualanDashboardTinjauan struct {
 	Total float64 `json:"total"`
 	Month string  `json:"month"`
 }
+
+type ResponseTotalPenjualanInWeekDashboardTinjauan struct {
+	Total float64 `json:"total"`
+	Day   string  `json:"day"`
+}
