@@ -22,6 +22,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 		auth.POST("/dashboard-tinjauan/total-penjualan", controllers.GetDashboardTinjauanTotalPenjualan)
 		auth.POST("/dashboard-tinjauan/total-pesanan", controllers.GetDashboardTinjauanTotalPesanan)
+		auth.POST("/dashboard-tinjauan/total-pengunjung", controllers.GetDashboardTinjauanTotalPengunjung)
+		auth.POST("/dashboard-tinjauan/tren-penjualan", controllers.GetDashboardTinjauanTrenPenjualan)
 
 		auth.POST("/store", controllers.CreateStore)
 		auth.PUT("/store", controllers.UpdateStore)
