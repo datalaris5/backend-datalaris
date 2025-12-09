@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"go-datalaris/config"
 	"go-datalaris/constant"
@@ -22,7 +23,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func UploadExcelShopee(c *gin.Context) {
+func UploadExcelShopeeTinjauan(c *gin.Context) {
 	storeId := c.Param("id")
 	// c.FormFile hanya mengembalikan 2 nilai: *multipart.FileHeader, error
 	fileHeader, err := c.FormFile("file")
@@ -97,7 +98,7 @@ func UploadExcelShopee(c *gin.Context) {
 		// 1. Delete data existing untuk rentang tanggal upload
 		_, err = tx.
 			Where("store_id = ? AND tanggal BETWEEN ? AND ?", storeId, startDate, endDate).
-			Delete(&models.ShopeeDataUploadDetail{}).
+			Delete(&models.ShopeeDataUploadTinjauanDetail{}).
 			Rows()
 		if err != nil {
 			return err
@@ -105,12 +106,129 @@ func UploadExcelShopee(c *gin.Context) {
 
 		// 2. Insert ulang row baru
 		for i := range details {
-			detail, err := ConvertDetailFromRow(details[i], storeId)
+			detail, err := ConvertDetailTinjauanFromRow(details[i], storeId)
 			if err != nil {
 				return err
 			}
 
-			_, err = services.Save[models.ShopeeDataUploadDetail](*detail, tx)
+			_, err = services.Save[models.ShopeeDataUploadTinjauanDetail](*detail, tx)
+			if err != nil {
+				return err
+			}
+		}
+
+		// 3. Insert history log
+		history := models.HistoryDataUpload{
+			StoreId:  utils.ParseUintParam(storeId),
+			Filename: fileHeader.Filename,
+			Status:   constant.Success,
+		}
+		_, err = services.Save[models.HistoryDataUpload](history, tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		utils.Error(c, http.StatusBadRequest, "Transaction failed", utils.ParseDBError(err))
+		return
+	}
+
+	utils.Success(c, constant.SuccessUploadFile, nil)
+}
+
+func UploadCsvShopeeIklan(c *gin.Context) {
+	storeId := c.Param("id")
+	// c.FormFile hanya mengembalikan 2 nilai: *multipart.FileHeader, error
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		utils.Error(c, http.StatusBadRequest, constant.ErrorUploadFile, nil)
+		return
+	}
+
+	_, err = services.GetWhereFirst[models.Store]("id = ?", storeId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.StoreConst+constant.ErrorNotFound, nil)
+		return
+	}
+
+	// Validasi ekstensi
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	fmt.Println(ext)
+	if ext != ".csv" {
+		utils.Error(c, http.StatusBadRequest, constant.ErrorInvalidFileType, nil)
+		return
+	}
+
+	// Simpan file ke folder uploads
+	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorCreateDir, nil)
+		return
+	}
+
+	dstPath := filepath.Join("uploads", fileHeader.Filename)
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorSaveFile, nil)
+		return
+	}
+	defer dst.Close()
+
+	// Buka file dari FileHeader
+	src, err := fileHeader.Open()
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorOpenFile, nil)
+		return
+	}
+	defer src.Close()
+
+	_, err = io.Copy(dst, src)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorCopyFile, nil)
+		return
+	}
+
+	details := readCsvShopee(dstPath)
+
+	userID, ok := c.Get("user_id")
+	if !ok {
+		utils.Error(c, http.StatusUnauthorized, "User ID not found", nil)
+		return
+	}
+
+	ctx := context.WithValue(c.Request.Context(), utils.UserIDKey, userID)
+
+	db := config.DB
+	err = services.WithTransaction(db.WithContext(ctx), func(tx *gorm.DB) error {
+
+		// startDate, err := parseTanggalShopee(details[0][0])
+		// if err != nil {
+		// 	return fmt.Errorf("invalid first date: %w", err)
+		// }
+		// endDate, err := parseTanggalShopee(details[len(details)-1][0])
+		// if err != nil {
+		// 	return fmt.Errorf("invalid last date: %w", err)
+		// }
+
+		// // 1. Delete data existing untuk rentang tanggal upload
+		// _, err = tx.
+		// 	Where("store_id = ? AND tanggal BETWEEN ? AND ?", storeId, startDate, endDate).
+		// 	Delete(&models.ShopeeDataUploadTinjauanDetail{}).
+		// 	Rows()
+		// if err != nil {
+		// 	return err
+		// }
+
+		// 2. Insert ulang row baru
+		for i := range details {
+			detail, err := ConvertDetailIklanFromRow(details[i], storeId)
+			if err != nil {
+				return err
+			}
+
+			_, err = services.Save[models.ShopeeDataUploadIklanDetail](*detail, tx)
 			if err != nil {
 				return err
 			}
@@ -171,7 +289,7 @@ func readExcelShopee(path string) [][]string {
 	var details [][]string
 
 	for i := range rows {
-		if i == 0 || i == 1 || i == 2 || i == 3 {
+		if i < 4 {
 			continue
 		} else {
 			details = append(details, rows[i])
@@ -182,7 +300,7 @@ func readExcelShopee(path string) [][]string {
 
 }
 
-func ConvertDetailFromRow(row []string, storeId string) (*models.ShopeeDataUploadDetail, error) {
+func ConvertDetailTinjauanFromRow(row []string, storeId string) (*models.ShopeeDataUploadTinjauanDetail, error) {
 	// pastikan minimal ada kolom
 	if len(row) < 16 {
 		return nil, fmt.Errorf("jumlah kolom summary tidak sesuai")
@@ -194,7 +312,7 @@ func ConvertDetailFromRow(row []string, storeId string) (*models.ShopeeDataUploa
 		return nil, err
 	}
 
-	return &models.ShopeeDataUploadDetail{
+	return &models.ShopeeDataUploadTinjauanDetail{
 		StoreID:                  utils.ParseUintParam(storeId),
 		Tanggal:                  tanggal,
 		TotalPenjualan:           decimal.RequireFromString(CleanNumber(row[1])),
@@ -215,6 +333,76 @@ func ConvertDetailFromRow(row []string, storeId string) (*models.ShopeeDataUploa
 	}, nil
 }
 
+func ConvertDetailIklanFromRow(row []string, storeId string) (*models.ShopeeDataUploadIklanDetail, error) {
+	// minimal 28 kolom
+	if len(row) < 28 {
+		return nil, fmt.Errorf("jumlah kolom iklan tidak sesuai")
+	}
+
+	return &models.ShopeeDataUploadIklanDetail{
+		StoreID:                  utils.ParseUintParam(storeId),
+		NamaIklan:                row[1],
+		Status:                   row[2],
+		JenisIklan:               row[3],
+		KodeProduk:               row[4],
+		TampilanIklan:            row[5],
+		ModeBidding:              row[6],
+		PenempatanIklan:          row[7],
+		TanggalMulai:             row[8],
+		TanggalSelesai:           row[9],
+		Dilihat:                  toInt(row[10]),
+		JumlahKlik:               toInt(row[11]),
+		PresentaseKlik:           decimal.RequireFromString(CleanNumber(row[12])),
+		Konversi:                 toInt(row[13]),
+		KonversiLangsung:         toInt(row[14]),
+		TingkatKonversi:          decimal.RequireFromString(CleanNumber(row[15])),
+		BiayaPerKonversi:         decimal.RequireFromString(CleanNumber(row[16])),
+		BiayaPerKonversiLangsung: decimal.RequireFromString(CleanNumber(row[17])),
+		ProdukTerjual:            toInt(row[18]),
+		TerjualLangsung:          toInt(row[19]),
+		OmzetPenjualan:           decimal.RequireFromString(CleanNumber(row[20])),
+		GVMLangsung:              decimal.RequireFromString(CleanNumber(row[21])),
+		Biaya:                    decimal.RequireFromString(CleanNumber(row[22])),
+		EfektifitasIklan:         decimal.RequireFromString(CleanNumber(row[23])),
+		EfektifitasLangsung:      decimal.RequireFromString(CleanNumber(row[24])),
+		ACOS:                     decimal.RequireFromString(CleanNumber(row[25])),
+		ACOSLangsung:             decimal.RequireFromString(CleanNumber(row[26])),
+		JumlahProdukDilihat:      toInt(row[27]),
+		JumlahProdukDiklik:       toInt(row[28]),
+		PresentaseProdukDiklik:   decimal.RequireFromString(CleanNumber(row[29])),
+	}, nil
+}
+
+func readCsvShopee(path string) [][]string {
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Println("Error baca csv:", err)
+		return nil
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = -1
+
+	rows, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Gagal baca csv:", err)
+		return nil
+	}
+
+	var details [][]string
+
+	for i := range rows {
+		// skip 7 baris header
+		if i < 7 {
+			continue
+		}
+		details = append(details, rows[i])
+	}
+
+	return details
+}
+
 func toInt(s string) int {
 	i, _ := strconv.Atoi(strings.ReplaceAll(s, ",", ""))
 	return i
@@ -222,6 +410,11 @@ func toInt(s string) int {
 
 func CleanNumber(s string) string {
 	s = strings.TrimSpace(s)
+
+	// kalau "-"
+	if s == "-" || s == "" {
+		return "0"
+	}
 
 	if strings.Contains(s, "%") {
 		s = strings.ReplaceAll(s, "%", "")

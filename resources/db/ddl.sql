@@ -61,6 +61,44 @@ CREATE TABLE shopee_data_upload_details (
 	updated_by int8 NULL
 );
 
+CREATE TABLE shopee_data_upload_iklan_details (
+	id bigserial PRIMARY KEY,
+	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,    
+	nama_iklan TEXT,
+	status VARCHAR(200),
+	jenis_iklan VARCHAR(100),
+	kode_produk VARCHAR(100),
+	tampilan_iklan TEXT,
+	mode_bidding VARCHAR(100),
+	penempatan_iklan VARCHAR(150),
+	tanggal_mulai VARCHAR(100),
+	tanggal_selesai VARCHAR(100),
+	dilihat INT,
+	jumlah_klik INT,
+	presentase_klik NUMERIC(18,2),
+	konversi INT,
+	konversi_langsung INT,
+	tingkat_konversi NUMERIC(18,2),
+	biaya_per_konversi NUMERIC(18,2),
+	biaya_per_konversi_langsung NUMERIC(18,2),
+	produk_terjual INT,
+	terjual_langsung INT,
+	omzet_penjualan NUMERIC(18,2),
+	gvm_langsung NUMERIC(18,2),
+	biaya NUMERIC(18,2),
+	efektifitas_iklan NUMERIC(18,2),
+	efektifitas_langsung NUMERIC(18,2),
+	acos NUMERIC(18,2),
+	acos_langsung NUMERIC(18,2),
+	jumlah_produk_dilihat INT,
+	jumlah_produk_diklik INT,
+	presentase_produk_diklik NUMERIC(18,2),
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	created_by int8 NULL,
+	updated_by int8 NULL
+);
+
 CREATE TABLE history_data_uploads (
 	id bigserial PRIMARY KEY,
 	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,    

@@ -1,0 +1,27 @@
+meta {
+  name: Upload Iklan
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/v1/api/admin/upload/iklan/:id
+  body: multipartForm
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  file: @file(C:\Users\USER\Downloads\cansonofficial.shopee-shop-stats.20251001-20251031.xlsx)
+}
+
+settings {
+  encodeUrl: true
+}

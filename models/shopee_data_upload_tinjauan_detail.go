@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type ShopeeDataUploadDetail struct {
+type ShopeeDataUploadTinjauanDetail struct {
 	common.BaseModel
 	StoreID                  uint            `gorm:"column:store_id"`
 	Tanggal                  time.Time       `gorm:"column:tanggal"`
@@ -28,6 +28,6 @@ type ShopeeDataUploadDetail struct {
 	TingkatPembelianBerulang decimal.Decimal `gorm:"column:tingkat_pembelian_berulang;type:numeric(5,2)"`
 }
 
-func (ShopeeDataUploadDetail) TableName() string {
+func (ShopeeDataUploadTinjauanDetail) TableName() string {
 	return "shopee_data_upload_details"
 }
