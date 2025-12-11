@@ -19,6 +19,13 @@ type ResponseHeaderDashboardTinjauan struct {
 	Sparkline []ResponseSparkline `json:"sparkline"`
 }
 
+type ResponseHeaderDashboardIklan struct {
+	Total     any                 `json:"total"`
+	Percent   float64             `json:"percent"`
+	Trend     string              `json:"trend"`
+	Sparkline []ResponseSparkline `json:"sparkline"`
+}
+
 type ResponseSparkline struct {
 	Tanggal time.Time `json:"tanggal"`
 	Total   float64   `json:"total"`

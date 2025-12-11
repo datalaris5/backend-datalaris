@@ -192,6 +192,11 @@ func UploadCsvShopeeIklan(c *gin.Context) {
 
 	details, dateFrom, dateTo := readCsvShopee(dstPath)
 
+	if !dateFrom.Equal(dateTo) {
+		utils.Error(c, http.StatusBadRequest, "Range tanggal tidak valid, harus 1 hari", nil)
+		return
+	}
+
 	userID, ok := c.Get("user_id")
 	if !ok {
 		utils.Error(c, http.StatusUnauthorized, "User ID not found", nil)
@@ -203,44 +208,18 @@ func UploadCsvShopeeIklan(c *gin.Context) {
 	db := config.DB
 	err = services.WithTransaction(db.WithContext(ctx), func(tx *gorm.DB) error {
 
-		header := models.ShopeeDataUploadIklanHeader{
-			StoreID:  utils.ParseUintParam(storeId),
-			DateFrom: dateFrom,
-			DateTo:   dateTo,
-			Filename: fileHeader.Filename,
-		}
-
-		// 1. Ambil header yang punya range tanggal
-		headers, err := services.GetWhereFind[models.ShopeeDataUploadIklanHeader]("store_id = ? AND date_from >= ? AND date_to <= ?", storeId, dateFrom, dateTo)
-
-		// 2. Extract header_id
-		var headerIDs []uint
-		for _, h := range headers {
-			headerIDs = append(headerIDs, h.ID)
-		}
-
-		// 3. Delete detail jika ada header_id
-		if len(headerIDs) > 0 {
-			if err := tx.Where("header_id IN ?", headerIDs).
-				Delete(&models.ShopeeDataUploadIklanDetail{}).Error; err != nil {
-				return err
-			}
-
-			// 4. Delete header-nya
-			if err := tx.Where("id IN ?", headerIDs).
-				Delete(&models.ShopeeDataUploadIklanHeader{}).Error; err != nil {
-				return err
-			}
-		}
-
-		savedHeader, err := services.Save[models.ShopeeDataUploadIklanHeader](header, tx)
+		// 1. Delete data existing untuk tanggal upload
+		_, err = tx.
+			Where("store_id = ? AND tanggal = ?", storeId, dateFrom).
+			Delete(&models.ShopeeDataUploadIklanDetail{}).
+			Rows()
 		if err != nil {
 			return err
 		}
 
 		// 2. Insert ulang row baru
 		for i := range details {
-			detail, err := ConvertDetailIklanFromRow(details[i], savedHeader.ID)
+			detail, err := ConvertDetailIklanFromRow(details[i], storeId, dateFrom)
 			if err != nil {
 				return err
 			}
@@ -350,14 +329,15 @@ func ConvertDetailTinjauanFromRow(row []string, storeId string) (*models.ShopeeD
 	}, nil
 }
 
-func ConvertDetailIklanFromRow(row []string, headerID uint) (*models.ShopeeDataUploadIklanDetail, error) {
+func ConvertDetailIklanFromRow(row []string, storeId string, tanggal time.Time) (*models.ShopeeDataUploadIklanDetail, error) {
 	// minimal 28 kolom
 	if len(row) < 28 {
 		return nil, fmt.Errorf("jumlah kolom iklan tidak sesuai")
 	}
 
 	return &models.ShopeeDataUploadIklanDetail{
-		HeaderID:                 headerID,
+		StoreID:                  utils.ParseUintParam(storeId),
+		Tanggal:                  tanggal,
 		NamaIklan:                row[1],
 		Status:                   row[2],
 		JenisIklan:               row[3],

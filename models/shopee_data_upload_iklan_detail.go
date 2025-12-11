@@ -2,13 +2,15 @@ package models
 
 import (
 	"go-datalaris/common"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
 
 type ShopeeDataUploadIklanDetail struct {
 	common.BaseModel
-	HeaderID                 uint            `gorm:"column:header_id"`
+	StoreID                  uint            `gorm:"column:store_id"`
+	Tanggal                  time.Time       `gorm:"column:tanggal"`
 	NamaIklan                string          `gorm:"column:nama_iklan"`
 	Status                   string          `gorm:"column:status"`
 	JenisIklan               string          `gorm:"column:jenis_iklan"`

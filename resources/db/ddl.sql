@@ -61,21 +61,10 @@ CREATE TABLE shopee_data_upload_details (
 	updated_by int8 NULL
 );
 
-CREATE TABLE shopee_data_upload_iklan_headers (
-	id bigserial PRIMARY KEY,
-	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,    
-	filename TEXT,
-	date_from DATE,
-	date_to DATE,
-	created_at timestamptz DEFAULT now() NULL,
-	updated_at timestamptz DEFAULT now() NULL,
-	created_by int8 NULL,
-	updated_by int8 NULL
-);
-
 CREATE TABLE shopee_data_upload_iklan_details (
 	id bigserial PRIMARY KEY,
-	header_id BIGINT REFERENCES shopee_data_upload_iklan_headers(id) ON DELETE CASCADE,    
+	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,  
+	tanggal DATE,  
 	nama_iklan TEXT,
 	status VARCHAR(200),
 	jenis_iklan VARCHAR(100),
