@@ -8,7 +8,7 @@ import (
 
 type ShopeeDataUploadIklanDetail struct {
 	common.BaseModel
-	StoreID                  uint            `gorm:"column:store_id"`
+	HeaderID                 uint            `gorm:"column:header_id"`
 	NamaIklan                string          `gorm:"column:nama_iklan"`
 	Status                   string          `gorm:"column:status"`
 	JenisIklan               string          `gorm:"column:jenis_iklan"`

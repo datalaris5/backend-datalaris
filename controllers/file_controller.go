@@ -190,7 +190,7 @@ func UploadCsvShopeeIklan(c *gin.Context) {
 		return
 	}
 
-	details := readCsvShopee(dstPath)
+	details, dateFrom, dateTo := readCsvShopee(dstPath)
 
 	userID, ok := c.Get("user_id")
 	if !ok {
@@ -203,27 +203,44 @@ func UploadCsvShopeeIklan(c *gin.Context) {
 	db := config.DB
 	err = services.WithTransaction(db.WithContext(ctx), func(tx *gorm.DB) error {
 
-		// startDate, err := parseTanggalShopee(details[0][0])
-		// if err != nil {
-		// 	return fmt.Errorf("invalid first date: %w", err)
-		// }
-		// endDate, err := parseTanggalShopee(details[len(details)-1][0])
-		// if err != nil {
-		// 	return fmt.Errorf("invalid last date: %w", err)
-		// }
+		header := models.ShopeeDataUploadIklanHeader{
+			StoreID:  utils.ParseUintParam(storeId),
+			DateFrom: dateFrom,
+			DateTo:   dateTo,
+			Filename: fileHeader.Filename,
+		}
 
-		// // 1. Delete data existing untuk rentang tanggal upload
-		// _, err = tx.
-		// 	Where("store_id = ? AND tanggal BETWEEN ? AND ?", storeId, startDate, endDate).
-		// 	Delete(&models.ShopeeDataUploadTinjauanDetail{}).
-		// 	Rows()
-		// if err != nil {
-		// 	return err
-		// }
+		// 1. Ambil header yang punya range tanggal
+		headers, err := services.GetWhereFind[models.ShopeeDataUploadIklanHeader]("store_id = ? AND date_from >= ? AND date_to <= ?", storeId, dateFrom, dateTo)
+
+		// 2. Extract header_id
+		var headerIDs []uint
+		for _, h := range headers {
+			headerIDs = append(headerIDs, h.ID)
+		}
+
+		// 3. Delete detail jika ada header_id
+		if len(headerIDs) > 0 {
+			if err := tx.Where("header_id IN ?", headerIDs).
+				Delete(&models.ShopeeDataUploadIklanDetail{}).Error; err != nil {
+				return err
+			}
+
+			// 4. Delete header-nya
+			if err := tx.Where("id IN ?", headerIDs).
+				Delete(&models.ShopeeDataUploadIklanHeader{}).Error; err != nil {
+				return err
+			}
+		}
+
+		savedHeader, err := services.Save[models.ShopeeDataUploadIklanHeader](header, tx)
+		if err != nil {
+			return err
+		}
 
 		// 2. Insert ulang row baru
 		for i := range details {
-			detail, err := ConvertDetailIklanFromRow(details[i], storeId)
+			detail, err := ConvertDetailIklanFromRow(details[i], savedHeader.ID)
 			if err != nil {
 				return err
 			}
@@ -333,14 +350,14 @@ func ConvertDetailTinjauanFromRow(row []string, storeId string) (*models.ShopeeD
 	}, nil
 }
 
-func ConvertDetailIklanFromRow(row []string, storeId string) (*models.ShopeeDataUploadIklanDetail, error) {
+func ConvertDetailIklanFromRow(row []string, headerID uint) (*models.ShopeeDataUploadIklanDetail, error) {
 	// minimal 28 kolom
 	if len(row) < 28 {
 		return nil, fmt.Errorf("jumlah kolom iklan tidak sesuai")
 	}
 
 	return &models.ShopeeDataUploadIklanDetail{
-		StoreID:                  utils.ParseUintParam(storeId),
+		HeaderID:                 headerID,
 		NamaIklan:                row[1],
 		Status:                   row[2],
 		JenisIklan:               row[3],
@@ -373,11 +390,11 @@ func ConvertDetailIklanFromRow(row []string, storeId string) (*models.ShopeeData
 	}, nil
 }
 
-func readCsvShopee(path string) [][]string {
+func readCsvShopee(path string) ([][]string, time.Time, time.Time) {
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println("Error baca csv:", err)
-		return nil
+		return nil, time.Time{}, time.Time{}
 	}
 	defer file.Close()
 
@@ -387,12 +404,20 @@ func readCsvShopee(path string) [][]string {
 	rows, err := reader.ReadAll()
 	if err != nil {
 		fmt.Println("Gagal baca csv:", err)
-		return nil
+		return nil, time.Time{}, time.Time{}
 	}
 
 	var details [][]string
+	var dateFrom, dateTo time.Time
 
 	for i := range rows {
+		if i == 5 {
+			raw := rows[i][1] // kolom ke-1
+			fmt.Println(raw)
+			dateFrom, dateTo, _ = parseDateRange(raw)
+			continue
+		}
+
 		// skip 7 baris header
 		if i < 7 {
 			continue
@@ -400,7 +425,28 @@ func readCsvShopee(path string) [][]string {
 		details = append(details, rows[i])
 	}
 
-	return details
+	return details, dateFrom, dateTo
+}
+
+func parseDateRange(raw string) (time.Time, time.Time, error) {
+	parts := strings.Split(raw, "-")
+	if len(parts) != 2 {
+		return time.Time{}, time.Time{}, fmt.Errorf("format tidak valid")
+	}
+
+	dateFromStr := strings.TrimSpace(parts[0])
+	dateToStr := strings.TrimSpace(parts[1])
+
+	layout := "02/01/2006"
+
+	dateFrom, err1 := time.Parse(layout, dateFromStr)
+	dateTo, err2 := time.Parse(layout, dateToStr)
+
+	if err1 != nil || err2 != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("gagal parse tanggal")
+	}
+
+	return dateFrom, dateTo, nil
 }
 
 func toInt(s string) int {
