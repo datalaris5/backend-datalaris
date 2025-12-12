@@ -51,3 +51,11 @@ type ResponseTotalROASDashboardIklan struct {
 	Roas  float64 `json:"roas"`
 	Month string  `json:"month"`
 }
+
+type ResponseTopProductDashboardIklan struct {
+	NamaIklan      string  `json:"nama_iklan"`
+	Roas           float64 `json:"roas"`
+	ConvertionRate float64 `json:"convertion_rate"`
+	Biaya          float64 `json:"biaya"`
+	Penjualan      float64 `json:"penjualan"`
+}

@@ -525,3 +525,34 @@ func GetDashboardTotalROAS(c *gin.Context) {
 
 	utils.Success(c, constant.DashboardIklanConst+constant.SuccessFetch, result)
 }
+
+func GetDashboardTopProduct(c *gin.Context) {
+	var result []dto.ResponseTopProductDashboardIklan
+	input, errBind := utils.BindJSON[dto.RequestDashboardIklan](c)
+	if errBind != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
+		return
+	}
+	db := config.DB
+	db.Raw(`
+	SELECT CONCAT('[', s.name, '] ', d.nama_iklan) AS nama_iklan, 
+	CASE 
+		WHEN SUM(biaya) = 0 THEN 0
+		ELSE (SUM(omzet_penjualan)::float / SUM(biaya)::float)
+	END AS roas,
+	CASE 
+		WHEN SUM(jumlah_klik) = 0 THEN 0
+		ELSE (SUM(konversi)::float / SUM(jumlah_klik)::float) * 100
+	END AS convertion_rate,
+	COALESCE(SUM(biaya), 0) as biaya,
+	COALESCE(SUM(omzet_penjualan), 0) as penjualan
+	FROM shopee_data_upload_iklan_details d
+	JOIN stores s ON s.id = d.store_id
+	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
+	GROUP BY concat('[', s.name, '] ', d.nama_iklan)
+	ORDER BY penjualan DESC
+	LIMIT 10;
+	`, input.StoreId, input.DateFrom, input.DateTo).Scan(&result)
+
+	utils.Success(c, constant.DashboardIklanConst+constant.SuccessFetch, result)
+}
