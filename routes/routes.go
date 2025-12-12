@@ -20,6 +20,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	{
 		auth.POST("/upload/tinjauan/:id", controllers.UploadExcelShopeeTinjauan)
 		auth.POST("/upload/iklan/:id", controllers.UploadCsvShopeeIklan)
+		auth.POST("/upload/chat/:id", controllers.UploadExcelShopeeChat)
 
 		auth.POST("/dashboard-tinjauan/total-penjualan", controllers.GetDashboardTinjauanTotalPenjualan)
 		auth.POST("/dashboard-tinjauan/total-pesanan", controllers.GetDashboardTinjauanTotalPesanan)

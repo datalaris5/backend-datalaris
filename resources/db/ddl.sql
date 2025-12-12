@@ -100,6 +100,32 @@ CREATE TABLE shopee_data_upload_iklan_details (
 	updated_by int8 NULL
 );
 
+CREATE TABLE shopee_data_upload_chat_details (
+	id bigserial PRIMARY KEY,
+	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,  
+	tanggal DATE,  
+	pengunjung INT,
+	jumlah_chat INT,
+	pengunjung_bertanya INT,
+	pertanyaan_diajukan NUMERIC(18,2),
+	chat_dibalas INT,
+	chat_belum_dibalas INT,
+	waktu_respon_rata_rata INTERVAL,
+	csat NUMERIC(18,2),
+	waktu_respon_chat_pertama INTERVAL,
+	presentase_chat_dibalas NUMERIC(18,2),
+	tingkat_konversi_jumlah_chat_direspon NUMERIC(18,2),
+	total_pembeli INT,
+	total_pesanan INT,
+	produk INT,
+	penjualan NUMERIC(18,2),
+	tingkat_konversi_chat_dibalas NUMERIC(18,2),
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	created_by int8 NULL,
+	updated_by int8 NULL
+);
+
 CREATE TABLE history_data_uploads (
 	id bigserial PRIMARY KEY,
 	store_id BIGINT REFERENCES stores(id) ON DELETE CASCADE,    

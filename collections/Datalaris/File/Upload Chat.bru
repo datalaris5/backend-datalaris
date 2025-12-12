@@ -1,0 +1,27 @@
+meta {
+  name: Upload Chat
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/v1/api/admin/upload/chat/:id
+  body: multipartForm
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  file: @file(C:\Users\USER\Downloads\chat_20250101_20250131.xlsx)
+}
+
+settings {
+  encodeUrl: true
+}
