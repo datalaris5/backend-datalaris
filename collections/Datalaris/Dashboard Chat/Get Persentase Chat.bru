@@ -1,0 +1,27 @@
+meta {
+  name: Get Persentase Chat
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/v1/api/admin/dashboard-chat/persentase-chat
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "store_id":1,
+    "date_from":"2025-01-01",
+    "date_to":"2025-12-31"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

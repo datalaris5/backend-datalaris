@@ -45,6 +45,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		auth.POST("/dashboard-chat/total-pembeli", controllers.GetDashboardChatTotalPembeli)
 		auth.POST("/dashboard-chat/penjualan", controllers.GetDashboardChatEstPenjualan)
 		auth.POST("/dashboard-chat/convertion-rate", controllers.GetDashboardChatConvertionRate)
+		auth.POST("/dashboard-chat/persentase-chat", controllers.GetDashboardChatPersentaseChat)
 
 		auth.GET("/history-data-upload", controllers.GetHistoryDataUpload)
 
