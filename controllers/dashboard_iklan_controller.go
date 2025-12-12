@@ -550,7 +550,6 @@ func GetDashboardTopProduct(c *gin.Context) {
 	JOIN stores s ON s.id = d.store_id
 	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
 	GROUP BY concat('[', s.name, '] ', d.nama_iklan)
-	ORDER BY penjualan DESC
 	LIMIT 10;
 	`, input.StoreId, input.DateFrom, input.DateTo).Scan(&result)
 
