@@ -35,6 +35,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		auth.POST("/dashboard-iklan/convertion-rate", controllers.GetDashboardIklanConvertionRateIklan)
 		auth.POST("/dashboard-iklan/presentase-klik", controllers.GetDashboardIklanPresentaseKlik)
 		auth.POST("/dashboard-iklan/dilihat", controllers.GetDashboardIklanDilihat)
+		auth.POST("/dashboard-iklan/penjualan-dan-biaya", controllers.GetDashboardTotalPenjulandanBiaya)
+		auth.POST("/dashboard-iklan/total-roas", controllers.GetDashboardTotalROAS)
 
 		auth.GET("/history-data-upload", controllers.GetHistoryDataUpload)
 

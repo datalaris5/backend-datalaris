@@ -463,3 +463,65 @@ func GetDashboardIklanDilihat(c *gin.Context) {
 
 	utils.Success(c, constant.DashboardIklanConst+constant.SuccessFetch, result)
 }
+
+func GetDashboardTotalPenjulandanBiaya(c *gin.Context) {
+	var result []dto.ResponseTotalPenjualanDanBiayaDashboardIklan
+	input, errBind := utils.BindJSON[dto.RequestDashboardIklan](c)
+	if errBind != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
+		return
+	}
+	db := config.DB
+	db.Raw(`
+	WITH months AS (
+		SELECT generate_series(
+			date_trunc('year', ? :: date),
+			date_trunc('year', ? :: date) + INTERVAL '11 months',
+			INTERVAL '1 month'
+		) AS month_start
+	)
+	SELECT 
+		COALESCE(SUM(sd.biaya), 0) AS biaya,
+		COALESCE(SUM(sd.omzet_penjualan), 0) AS penjualan,
+		TRIM(TO_CHAR(m.month_start, 'FMMonth YYYY')) AS month
+	FROM months m
+	LEFT JOIN shopee_data_upload_iklan_details sd 
+		ON date_trunc('month', sd.tanggal) = m.month_start AND store_id = ?
+	GROUP BY m.month_start
+	ORDER BY m.month_start;
+	`, input.DateFrom, input.DateTo, input.StoreId).Scan(&result)
+
+	utils.Success(c, constant.DashboardIklanConst+constant.SuccessFetch, result)
+}
+
+func GetDashboardTotalROAS(c *gin.Context) {
+	var result []dto.ResponseTotalROASDashboardIklan
+	input, errBind := utils.BindJSON[dto.RequestDashboardIklan](c)
+	if errBind != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
+		return
+	}
+	db := config.DB
+	db.Raw(`
+	WITH months AS (
+		SELECT generate_series(
+			date_trunc('year', ? :: date),
+			date_trunc('year', ? :: date) + INTERVAL '11 months',
+			INTERVAL '1 month'
+		) AS month_start
+	)
+	SELECT 
+		 CASE 
+        	WHEN COALESCE(SUM(sd.biaya), 0) = 0 THEN 0
+        	ELSE (COALESCE(SUM(sd.omzet_penjualan), 0)::float / COALESCE(SUM(sd.biaya), 0)::float)
+    	END AS roas,
+		TRIM(TO_CHAR(m.month_start, 'FMMonth YYYY')) AS month
+	FROM months m
+	LEFT JOIN shopee_data_upload_iklan_details sd 
+		ON date_trunc('month', sd.tanggal) = m.month_start AND store_id = ?
+	GROUP BY m.month_start
+	ORDER BY m.month_start;
+	`, input.DateFrom, input.DateTo, input.StoreId).Scan(&result)
+
+	utils.Success(c, constant.DashboardIklanConst+constant.SuccessFetch, result)
+}

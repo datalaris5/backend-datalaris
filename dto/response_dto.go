@@ -40,3 +40,14 @@ type ResponseTotalPenjualanInWeekDashboardTinjauan struct {
 	Total float64 `json:"total"`
 	Day   string  `json:"day"`
 }
+
+type ResponseTotalPenjualanDanBiayaDashboardIklan struct {
+	Biaya     float64 `json:"biaya"`
+	Penjualan float64 `json:"penjualan"`
+	Month     string  `json:"month"`
+}
+
+type ResponseTotalROASDashboardIklan struct {
+	Roas  float64 `json:"roas"`
+	Month string  `json:"month"`
+}
