@@ -40,6 +40,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		auth.POST("/dashboard-iklan/total-roas", controllers.GetDashboardTotalROAS)
 		auth.POST("/dashboard-iklan/top-product", controllers.GetDashboardTopProduct)
 
+		auth.POST("/dashboard-chat/jumlah-chat", controllers.GetDashboardChatJumlahChat)
+		auth.POST("/dashboard-chat/chat-dibalas", controllers.GetDashboardChatChatDibalas)
+		auth.POST("/dashboard-chat/total-pembeli", controllers.GetDashboardChatTotalPembeli)
+		auth.POST("/dashboard-chat/penjualan", controllers.GetDashboardChatEstPenjualan)
+		auth.POST("/dashboard-chat/convertion-rate", controllers.GetDashboardChatConvertionRate)
+
 		auth.GET("/history-data-upload", controllers.GetHistoryDataUpload)
 
 		auth.POST("/store", controllers.CreateStore)

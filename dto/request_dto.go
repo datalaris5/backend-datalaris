@@ -32,3 +32,9 @@ type RequestDashboardIklan struct {
 	DateFrom string `json:"date_from"`
 	DateTo   string `json:"date_to"`
 }
+
+type RequestDashboardChat struct {
+	StoreId  uint   `json:"store_id"`
+	DateFrom string `json:"date_from"`
+	DateTo   string `json:"date_to"`
+}

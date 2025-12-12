@@ -62,6 +62,7 @@ const LovConst = "Lov"
 const StoreConst = "Store"
 const DashboardTinjauanConst = "Dashboard Tinjauan"
 const DashboardIklanConst = "Dashboard Iklan"
+const DashboardChatConst = "Dashboard Chat"
 const MarketplaceConst = "Marketplace"
 const HistoryDataUpload = "History Data Upload"
 
