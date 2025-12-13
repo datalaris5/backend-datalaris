@@ -89,9 +89,8 @@ func Login(c *gin.Context) {
 			"tenant_name": tenantName,
 			"tenant_key":  tenantKey,
 			"role": gin.H{
-				"id":        role.ID,
-				"name":      role.Name,
-				"role_type": role.RoleType,
+				"id":   role.ID,
+				"name": role.Name,
 			},
 		},
 	})
@@ -126,10 +125,16 @@ func Register(c *gin.Context) {
 			return fmt.Errorf("Failed to hash password")
 		}
 
+		role, err := services.GetWhereFirst[models.Role]("name = ?", "USER")
+		if err != nil {
+			return err
+		}
+
 		user := models.User{
 			Name:     input.Name,
 			Email:    input.Email,
 			Password: hashed,
+			RoleID:   &role.ID,
 			TenantID: &savedTenant.ID,
 		}
 

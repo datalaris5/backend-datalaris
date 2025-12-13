@@ -1,7 +1,6 @@
 package seed
 
 import (
-	"go-datalaris/constant"
 	"go-datalaris/models"
 	"go-datalaris/utils"
 	"log"
@@ -48,8 +47,7 @@ func Seed(db *gorm.DB) {
 		First(&tenantSuperTokoA).Error; err == gorm.ErrRecordNotFound {
 
 		tenantSuperTokoA = models.Role{
-			Name:     "superadmin_toko_a",
-			RoleType: constant.RoleType.TenantSuper,
+			Name: "superadmin_toko_a",
 		}
 		if err := db.Create(&tenantSuperTokoA).Error; err != nil {
 			log.Fatalf("❌ Failed to create role superadmin_toko_a: %v", err)
@@ -62,8 +60,7 @@ func Seed(db *gorm.DB) {
 		First(&tenantSuperTokoB).Error; err == gorm.ErrRecordNotFound {
 
 		tenantSuperTokoB = models.Role{
-			Name:     "superadmin_toko_b",
-			RoleType: constant.RoleType.TenantSuper,
+			Name: "superadmin_toko_b",
 		}
 		if err := db.Create(&tenantSuperTokoB).Error; err != nil {
 			log.Fatalf("❌ Failed to create role superadmin_toko_b: %v", err)
@@ -76,8 +73,7 @@ func Seed(db *gorm.DB) {
 		First(&roleAdminTokoA).Error; err == gorm.ErrRecordNotFound {
 
 		roleAdminTokoA = models.Role{
-			Name:     "admin_toko_a",
-			RoleType: constant.RoleType.TenantAdmin,
+			Name: "admin_toko_a",
 		}
 		if err := db.Create(&roleAdminTokoA).Error; err != nil {
 			log.Fatalf("❌ Failed to create role admin_toko_a: %v", err)
@@ -90,8 +86,7 @@ func Seed(db *gorm.DB) {
 		First(&roleAdminTokoB).Error; err == gorm.ErrRecordNotFound {
 
 		roleAdminTokoB = models.Role{
-			Name:     "admin_toko_b",
-			RoleType: constant.RoleType.TenantAdmin,
+			Name: "admin_toko_b",
 		}
 		if err := db.Create(&roleAdminTokoB).Error; err != nil {
 			log.Fatalf("❌ Failed to create role admin_toko_b: %v", err)

@@ -33,16 +33,6 @@ func CreateTenant(c *gin.Context) {
 
 		input = savedInput
 
-		role := models.Role{
-			Name:     "SUPERADMIN " + savedInput.Name,
-			RoleType: constant.RoleType.TenantAdmin,
-		}
-
-		role, err = services.Save[models.Role](role, tx)
-		if err != nil {
-			return err
-		}
-
 		return nil
 	})
 

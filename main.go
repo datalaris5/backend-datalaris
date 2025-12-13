@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go-datalaris/config"
 	"go-datalaris/routes"
-	"go-datalaris/seed"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -40,7 +39,7 @@ func main() {
 
 	routes.SetupRoutes(r, db)
 
-	seed.Seed(db)
+	// seed.Seed(db)
 
 	r.Run(fmt.Sprintf(":%s", config.AppPort))
 }

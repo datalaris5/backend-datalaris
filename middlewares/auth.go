@@ -78,17 +78,8 @@ func AuthMiddlewareWithDB() gin.HandlerFunc {
 			c.Set("tenant_id_header", tenantHeader)
 		}
 
-		// --- Role Handling ---
-		isGlobal := user.Role.RoleType == "GLOBAL_SUPERADMIN"
-		isTenantSuper := user.Role.RoleType == "TENANT_SUPERADMIN"
-		isTenantAdmin := user.Role.RoleType == "TENANT_ADMIN"
-
 		c.Set("role_id", user.Role.ID)
 		c.Set("role_name", user.Role.Name)
-		c.Set("role_type", user.Role.RoleType)
-		c.Set("is_global_superadmin", isGlobal)
-		c.Set("is_tenant_superadmin", isTenantSuper)
-		c.Set("is_tenant_admin", isTenantAdmin)
 
 		// --- Inject ke context request (untuk downstream service) ---
 		ctx := context.WithValue(c.Request.Context(), "claims", claims)
@@ -96,7 +87,6 @@ func AuthMiddlewareWithDB() gin.HandlerFunc {
 		ctx = context.WithValue(ctx, "role_id", user.Role.ID)
 		ctx = context.WithValue(ctx, "tenant_id", tenantID)
 		ctx = context.WithValue(ctx, "tenant_id_header", tenantHeader)
-		ctx = context.WithValue(ctx, "role_type", user.Role.RoleType)
 		c.Request = c.Request.WithContext(ctx)
 
 		// fmt.Printf("✅ Authenticated user_id=%d, role=%s, tenant_key=%s\n", user.ID, user.Role.RoleType)
