@@ -71,6 +71,11 @@ type ResponseTotalROASDashboardIklan struct {
 	Month string  `json:"month"`
 }
 
+type ResponseTotalJumlahChatDashboardChat struct {
+	JumlahChat int    `json:"jumlah_chat"`
+	Month      string `json:"month"`
+}
+
 type ResponseTopProductDashboardIklan struct {
 	NamaIklan      string  `json:"nama_iklan"`
 	Roas           float64 `json:"roas"`
