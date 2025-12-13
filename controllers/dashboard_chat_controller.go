@@ -454,3 +454,100 @@ func GetDashboardChatPersentaseChat(c *gin.Context) {
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
+
+func GetDashboardRataRataWaktuRespon(c *gin.Context) {
+	var result dto.ResponseHeaderDashboardChatTimeDuration
+	input, errBind := utils.BindJSON[dto.RequestDashboardChat](c)
+	if errBind != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
+		return
+	}
+	db := config.DB
+	layout := "2006-01-02"
+
+	// convert string to time.Time
+	dateFrom, err1 := time.Parse(layout, input.DateFrom)
+	dateTo, err2 := time.Parse(layout, input.DateTo)
+	if err1 != nil || err2 != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid date format, use YYYY-MM-DD", nil)
+		return
+	}
+
+	var current, previous string
+
+	// total penjualan periode sekarang
+	db.Raw(`
+	SELECT
+    COALESCE(
+        SUM(
+            COALESCE(chat_dibalas, 0) * COALESCE(waktu_respon_rata_rata, INTERVAL '0')
+        ),
+        INTERVAL '0'
+    ) AS current
+	FROM shopee_data_upload_chat_details
+	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
+`, input.StoreId, dateFrom, dateTo).Scan(&current)
+
+	// cari range periode sebelumnya
+	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+
+	// total periode sebelumnya
+	db.Raw(`
+	SELECT
+    COALESCE(
+        SUM(
+            COALESCE(chat_dibalas, 0) * COALESCE(waktu_respon_rata_rata, INTERVAL '0')
+        ),
+        INTERVAL '0'
+    ) AS previous
+	FROM shopee_data_upload_chat_details
+	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
+`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+
+	currentDur, _ := utils.ParseIntervalToDuration(current)
+
+	previousDur, _ := utils.ParseIntervalToDuration(previous)
+
+	// hitung persentase naik / turun
+	currentSec := currentDur.Seconds()
+	previousSec := previousDur.Seconds()
+
+	changePercent := 0.0
+	if previousSec > 0 {
+		changePercent = ((currentSec - previousSec) / previousSec) * 100
+	}
+
+	if changePercent > 0 {
+		result.Trend = "Up"
+	} else if changePercent == 0 {
+		result.Trend = "Equal"
+	} else {
+		result.Trend = "Down"
+	}
+
+	result.Total = current
+	result.Percent = changePercent
+
+	var sparkline []dto.ResponseSparklineTimeDuration
+	// detail untuk sparkline
+	db.Raw(`
+	SELECT 
+		tanggal,
+        COALESCE(
+        SUM(
+            COALESCE(chat_dibalas, 0) 
+            * COALESCE(waktu_respon_rata_rata, INTERVAL '0')
+        ),
+        INTERVAL '0'
+    ) AS total
+	FROM shopee_data_upload_chat_details
+	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
+	GROUP BY tanggal
+	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
+
+	result.Sparkline = sparkline
+
+	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
+}

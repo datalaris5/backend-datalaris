@@ -33,9 +33,21 @@ type ResponseHeaderDashboardChat struct {
 	Sparkline []ResponseSparkline `json:"sparkline"`
 }
 
+type ResponseHeaderDashboardChatTimeDuration struct {
+	Total     string                          `json:"total"`
+	Percent   float64                         `json:"percent"`
+	Trend     string                          `json:"trend"`
+	Sparkline []ResponseSparklineTimeDuration `json:"sparkline"`
+}
+
 type ResponseSparkline struct {
 	Tanggal time.Time `json:"tanggal"`
 	Total   float64   `json:"total"`
+}
+
+type ResponseSparklineTimeDuration struct {
+	Tanggal time.Time `json:"tanggal"`
+	Total   string    `json:"total"`
 }
 
 type ResponseTrenPenjualanDashboardTinjauan struct {

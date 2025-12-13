@@ -281,3 +281,34 @@ func ChangeDayEnIn(day string) string {
 		return day // fallback kalau tidak cocok
 	}
 }
+
+func ParseIntervalToDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, nil
+	}
+
+	parts := strings.Split(s, ":")
+	if len(parts) != 3 {
+		return 0, fmt.Errorf("format interval tidak valid: %s", s)
+	}
+
+	hours, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, fmt.Errorf("interval jam tidak valid: %s", s)
+	}
+
+	mins, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, fmt.Errorf("interval menit tidak valid: %s", s)
+	}
+
+	secs, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, fmt.Errorf("interval detik tidak valid: %s", s)
+	}
+
+	return time.Duration(hours)*time.Hour +
+		time.Duration(mins)*time.Minute +
+		time.Duration(secs)*time.Second, nil
+}
