@@ -580,3 +580,43 @@ func GetDashboardChatTotalJumlahChat(c *gin.Context) {
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
+
+func GetDashboardChatRataRataWaktuResponInWeek(c *gin.Context) {
+	var result []dto.ResponseAvgWaktuResponInWeekDashboardChat
+	input, errBind := utils.BindJSON[dto.RequestDashboardChat](c)
+	if errBind != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
+		return
+	}
+	db := config.DB
+	db.Raw(`
+	WITH days AS (
+		SELECT generate_series(
+			date_trunc('week', ?::date),
+			date_trunc('week', ?::date) + INTERVAL '6 days',
+			INTERVAL '1 day'
+		)::date AS tanggal
+	)
+	SELECT
+		TRIM(TO_CHAR(d.tanggal, 'Day')) AS day,
+		COALESCE(
+			SUM(
+				COALESCE(s.chat_dibalas, 0)
+				* COALESCE(s.waktu_respon_rata_rata, INTERVAL '0')
+			),
+			INTERVAL '0'
+		) AS total
+	FROM days d
+	LEFT JOIN shopee_data_upload_chat_details s
+		ON s.tanggal::date = d.tanggal
+		AND s.store_id = ?
+	GROUP BY d.tanggal
+	ORDER BY d.tanggal;
+`, input.DateFrom, input.DateFrom, input.StoreId).Scan(&result)
+
+	for i := range result {
+		result[i].Day = utils.ChangeDayEnIn(result[i].Day)
+	}
+
+	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
+}

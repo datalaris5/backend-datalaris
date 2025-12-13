@@ -60,6 +60,11 @@ type ResponseTotalPenjualanInWeekDashboardTinjauan struct {
 	Day   string  `json:"day"`
 }
 
+type ResponseAvgWaktuResponInWeekDashboardChat struct {
+	Total string `json:"total"`
+	Day   string `json:"day"`
+}
+
 type ResponseTotalPenjualanDanBiayaDashboardIklan struct {
 	Biaya     float64 `json:"biaya"`
 	Penjualan float64 `json:"penjualan"`

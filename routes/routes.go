@@ -48,6 +48,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		auth.POST("/dashboard-chat/persentase-chat", controllers.GetDashboardChatPersentaseChat)
 		auth.POST("/dashboard-chat/avg-waktu-respon", controllers.GetDashboardRataRataWaktuRespon)
 		auth.POST("/dashboard-chat/total-jumlah-chat", controllers.GetDashboardChatTotalJumlahChat)
+		auth.POST("/dashboard-chat/avg-waktu-respon/in-week", controllers.GetDashboardChatRataRataWaktuResponInWeek)
 
 		auth.GET("/history-data-upload", controllers.GetHistoryDataUpload)
 
