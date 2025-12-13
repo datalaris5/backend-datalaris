@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"fmt"
+	"go-datalaris/config"
 	"go-datalaris/constant"
+	"go-datalaris/dto"
 	"go-datalaris/models"
 	"go-datalaris/services"
 	"go-datalaris/utils"
@@ -92,6 +95,59 @@ func Login(c *gin.Context) {
 			},
 		},
 	})
+}
+
+func Register(c *gin.Context) {
+	input, errBind := utils.BindJSON[dto.RegisterRequest](c)
+	if errBind != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
+		return
+	}
+
+	_, err := services.GetWhereFirst[models.User]("email = ?", input.Email)
+	if err == nil {
+		utils.Error(c, http.StatusInternalServerError, constant.UserConst+constant.ErrorAlreadyExist, utils.ParseDBError(err))
+		return
+	}
+
+	db := config.DB
+	err = services.WithTransaction(db.WithContext(c.Request.Context()), func(tx *gorm.DB) error {
+		tenant := models.Tenant{
+			Name: input.TenantName,
+		}
+
+		savedTenant, err := services.Save[models.Tenant](tenant, tx)
+		if err != nil {
+			return err
+		}
+
+		hashed, err := utils.HashPassword(input.Password)
+		if err != nil {
+			return fmt.Errorf("Failed to hash password")
+		}
+
+		user := models.User{
+			Name:     input.Name,
+			Email:    input.Email,
+			Password: hashed,
+			TenantID: &savedTenant.ID,
+		}
+
+		_, err = services.Save[models.User](user, tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, "Transaction failed", utils.ParseDBError(err))
+		return
+	}
+
+	utils.Success(c, constant.UserConst+constant.SuccessSaved, input)
+
 }
 
 // // ------------------ FORGOT PASSWORD ------------------

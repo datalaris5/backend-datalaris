@@ -13,6 +13,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 	// --- PUBLIC ---
 	api.POST("/login", controllers.Login)
+	api.POST("/register", controllers.Register)
 
 	// --- PROTECTED ---
 	auth := api.Group("/admin")
