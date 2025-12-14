@@ -4,11 +4,14 @@ import (
 	"go-datalaris/config"
 	"go-datalaris/constant"
 	"go-datalaris/dto"
+	"go-datalaris/models"
+	"go-datalaris/services"
 	"go-datalaris/utils"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func GetDashboardChatJumlahChat(c *gin.Context) {
@@ -29,53 +32,84 @@ func GetDashboardChatJumlahChat(c *gin.Context) {
 		return
 	}
 
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	var current, previous float64
+	if marketplace.Name == constant.ShopeeConst {
 
-	// total penjualan periode sekarang
-	db.Raw(`
-    SELECT COALESCE(SUM(jumlah_chat), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, dateFrom, dateTo).Scan(&current)
+		totalQuery := `
+		SELECT COALESCE(SUM(jumlah_chat), 0)
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?
+		`
+		currentArgs := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
 
-	// cari range periode sebelumnya
-	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
-	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
-	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+		if input.StoreId != 0 {
+			totalQuery += " AND store_id = ?"
+			currentArgs = append(currentArgs, input.StoreId)
+		}
 
-	// total periode sebelumnya
-	db.Raw(`
-    SELECT COALESCE(SUM(jumlah_chat), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+		// total penjualan periode sekarang
+		db.Raw(totalQuery, currentArgs...).Scan(&current)
 
-	// hitung persentase naik / turun
-	changePercent := 0.0
-	if previous > 0 {
-		changePercent = ((current - previous) / previous) * 100
+		// cari range periode sebelumnya
+		days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+		periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+		periodBeforeTo := dateTo.AddDate(0, 0, -days)
+
+		previousArgs := []interface{}{
+			periodBeforeFrom,
+			periodBeforeTo,
+		}
+
+		if input.StoreId != 0 {
+			previousArgs = append(previousArgs, input.StoreId)
+		}
+
+		// total periode sebelumnya
+		db.Raw(totalQuery, previousArgs...).Scan(&previous)
+
+		// hitung persentase naik / turun
+		changePercent := 0.0
+		if previous > 0 {
+			changePercent = ((current - previous) / previous) * 100
+		}
+		if changePercent > 0 {
+			result.Trend = "Up"
+		} else if changePercent == 0 {
+			result.Trend = "Equal"
+		} else {
+			result.Trend = "Down"
+		}
+
+		result.Total = current
+		result.Percent = changePercent
+
+		sparklineQuery := `
+		SELECT tanggal, SUM(jumlah_chat) AS total
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?`
+
+		if input.StoreId != 0 {
+			sparklineQuery += " AND store_id = ?"
+		}
+
+		sparklineQuery += " GROUP BY tanggal ORDER BY tanggal ASC"
+
+		var sparkline []dto.ResponseSparkline
+		// detail untuk sparkline
+		db.Raw(sparklineQuery, currentArgs...).Scan(&sparkline)
+
+		result.Sparkline = sparkline
+
 	}
-	if changePercent > 0 {
-		result.Trend = "Up"
-	} else if changePercent == 0 {
-		result.Trend = "Equal"
-	} else {
-		result.Trend = "Down"
-	}
-
-	result.Total = current
-	result.Percent = changePercent
-
-	var sparkline []dto.ResponseSparkline
-	// detail untuk sparkline
-	db.Raw(`
-	SELECT tanggal, SUM(jumlah_chat) AS total
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-	GROUP BY tanggal
-	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
-
-	result.Sparkline = sparkline
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -98,53 +132,84 @@ func GetDashboardChatChatDibalas(c *gin.Context) {
 		return
 	}
 
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	var current, previous float64
 
-	// total penjualan periode sekarang
-	db.Raw(`
-    SELECT COALESCE(SUM(chat_dibalas), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, dateFrom, dateTo).Scan(&current)
+	if marketplace.Name == constant.ShopeeConst {
+		// total chat dibalas periode sekarang
 
-	// cari range periode sebelumnya
-	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
-	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
-	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+		totalQuery := `
+		SELECT COALESCE(SUM(chat_dibalas), 0)
+    	FROM shopee_data_upload_chat_details
+    	WHERE tanggal BETWEEN ? AND ?
+		`
+		currentArgs := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
 
-	// total periode sebelumnya
-	db.Raw(`
-    SELECT COALESCE(SUM(chat_dibalas), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+		if input.StoreId != 0 {
+			totalQuery += " AND store_id = ?"
+			currentArgs = append(currentArgs, input.StoreId)
+		}
 
-	// hitung persentase naik / turun
-	changePercent := 0.0
-	if previous > 0 {
-		changePercent = ((current - previous) / previous) * 100
+		// total penjualan periode sekarang
+		db.Raw(totalQuery, currentArgs...).Scan(&current)
+
+		// cari range periode sebelumnya
+		days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+		periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+		periodBeforeTo := dateTo.AddDate(0, 0, -days)
+
+		previousArgs := []interface{}{
+			periodBeforeFrom,
+			periodBeforeTo,
+		}
+
+		if input.StoreId != 0 {
+			previousArgs = append(previousArgs, input.StoreId)
+		}
+
+		// total periode sebelumnya
+		db.Raw(totalQuery, previousArgs...).Scan(&previous)
+
+		// hitung persentase naik / turun
+		changePercent := 0.0
+		if previous > 0 {
+			changePercent = ((current - previous) / previous) * 100
+		}
+		if changePercent > 0 {
+			result.Trend = "Up"
+		} else if changePercent == 0 {
+			result.Trend = "Equal"
+		} else {
+			result.Trend = "Down"
+		}
+
+		result.Total = current
+		result.Percent = changePercent
+
+		sparklineQuery := `
+		SELECT tanggal, SUM(chat_dibalas) AS total
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?`
+
+		if input.StoreId != 0 {
+			sparklineQuery += " AND store_id = ?"
+		}
+
+		sparklineQuery += " GROUP BY tanggal ORDER BY tanggal ASC"
+
+		var sparkline []dto.ResponseSparkline
+		// detail untuk sparkline
+		db.Raw(sparklineQuery, currentArgs...).Scan(&sparkline)
+		result.Sparkline = sparkline
 	}
-	if changePercent > 0 {
-		result.Trend = "Up"
-	} else if changePercent == 0 {
-		result.Trend = "Equal"
-	} else {
-		result.Trend = "Down"
-	}
-
-	result.Total = current
-	result.Percent = changePercent
-
-	var sparkline []dto.ResponseSparkline
-	// detail untuk sparkline
-	db.Raw(`
-	SELECT tanggal, SUM(chat_dibalas) AS total
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-	GROUP BY tanggal
-	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
-
-	result.Sparkline = sparkline
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -167,53 +232,83 @@ func GetDashboardChatTotalPembeli(c *gin.Context) {
 		return
 	}
 
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	var current, previous float64
 
-	// total penjualan periode sekarang
-	db.Raw(`
-    SELECT COALESCE(SUM(total_pembeli), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, dateFrom, dateTo).Scan(&current)
+	if marketplace.Name == constant.ShopeeConst {
+		// total pembeli periode sekarang
+		totalQuery := `
+		SELECT COALESCE(SUM(total_pembeli), 0)
+    	FROM shopee_data_upload_chat_details
+    	WHERE tanggal BETWEEN ? AND ?
+		`
+		currentArgs := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
 
-	// cari range periode sebelumnya
-	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
-	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
-	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+		if input.StoreId != 0 {
+			totalQuery += " AND store_id = ?"
+			currentArgs = append(currentArgs, input.StoreId)
+		}
 
-	// total periode sebelumnya
-	db.Raw(`
-    SELECT COALESCE(SUM(total_pembeli), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+		// total penjualan periode sekarang
+		db.Raw(totalQuery, currentArgs...).Scan(&current)
 
-	// hitung persentase naik / turun
-	changePercent := 0.0
-	if previous > 0 {
-		changePercent = ((current - previous) / previous) * 100
+		// cari range periode sebelumnya
+		days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+		periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+		periodBeforeTo := dateTo.AddDate(0, 0, -days)
+
+		previousArgs := []interface{}{
+			periodBeforeFrom,
+			periodBeforeTo,
+		}
+
+		if input.StoreId != 0 {
+			previousArgs = append(previousArgs, input.StoreId)
+		}
+
+		// total periode sebelumnya
+		db.Raw(totalQuery, previousArgs...).Scan(&previous)
+
+		// hitung persentase naik / turun
+		changePercent := 0.0
+		if previous > 0 {
+			changePercent = ((current - previous) / previous) * 100
+		}
+		if changePercent > 0 {
+			result.Trend = "Up"
+		} else if changePercent == 0 {
+			result.Trend = "Equal"
+		} else {
+			result.Trend = "Down"
+		}
+
+		result.Total = current
+		result.Percent = changePercent
+
+		sparklineQuery := `
+		SELECT tanggal, SUM(total_pembeli) AS total
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?`
+
+		if input.StoreId != 0 {
+			sparklineQuery += " AND store_id = ?"
+		}
+
+		sparklineQuery += " GROUP BY tanggal ORDER BY tanggal ASC"
+
+		var sparkline []dto.ResponseSparkline
+		// detail untuk sparkline
+		db.Raw(sparklineQuery, currentArgs...).Scan(&sparkline)
+		result.Sparkline = sparkline
 	}
-	if changePercent > 0 {
-		result.Trend = "Up"
-	} else if changePercent == 0 {
-		result.Trend = "Equal"
-	} else {
-		result.Trend = "Down"
-	}
-
-	result.Total = current
-	result.Percent = changePercent
-
-	var sparkline []dto.ResponseSparkline
-	// detail untuk sparkline
-	db.Raw(`
-	SELECT tanggal, SUM(total_pembeli) AS total
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-	GROUP BY tanggal
-	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
-
-	result.Sparkline = sparkline
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -236,53 +331,84 @@ func GetDashboardChatEstPenjualan(c *gin.Context) {
 		return
 	}
 
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	var current, previous float64
 
-	// total penjualan periode sekarang
-	db.Raw(`
-    SELECT COALESCE(SUM(penjualan), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, dateFrom, dateTo).Scan(&current)
+	if marketplace.Name == constant.ShopeeConst {
+		// total penjualan periode sekarang
+		totalQuery := `
+		SELECT COALESCE(SUM(penjualan), 0)
+    	FROM shopee_data_upload_chat_details
+    	WHERE tanggal BETWEEN ? AND ?
+		`
+		currentArgs := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
 
-	// cari range periode sebelumnya
-	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
-	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
-	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+		if input.StoreId != 0 {
+			totalQuery += " AND store_id = ?"
+			currentArgs = append(currentArgs, input.StoreId)
+		}
 
-	// total periode sebelumnya
-	db.Raw(`
-    SELECT COALESCE(SUM(penjualan), 0)
-    FROM shopee_data_upload_chat_details
-    WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+		// total penjualan periode sekarang
+		db.Raw(totalQuery, currentArgs...).Scan(&current)
 
-	// hitung persentase naik / turun
-	changePercent := 0.0
-	if previous > 0 {
-		changePercent = ((current - previous) / previous) * 100
+		// cari range periode sebelumnya
+		days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+		periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+		periodBeforeTo := dateTo.AddDate(0, 0, -days)
+
+		// total periode sebelumnya
+		previousArgs := []interface{}{
+			periodBeforeFrom,
+			periodBeforeTo,
+		}
+
+		if input.StoreId != 0 {
+			previousArgs = append(previousArgs, input.StoreId)
+		}
+
+		// total periode sebelumnya
+		db.Raw(totalQuery, previousArgs...).Scan(&previous)
+
+		// hitung persentase naik / turun
+		changePercent := 0.0
+		if previous > 0 {
+			changePercent = ((current - previous) / previous) * 100
+		}
+		if changePercent > 0 {
+			result.Trend = "Up"
+		} else if changePercent == 0 {
+			result.Trend = "Equal"
+		} else {
+			result.Trend = "Down"
+		}
+
+		result.Total = current
+		result.Percent = changePercent
+
+		sparklineQuery := `
+		SELECT tanggal, SUM(penjualan) AS total
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?`
+
+		if input.StoreId != 0 {
+			sparklineQuery += " AND store_id = ?"
+		}
+
+		sparklineQuery += " GROUP BY tanggal ORDER BY tanggal ASC"
+
+		var sparkline []dto.ResponseSparkline
+		// detail untuk sparkline
+		db.Raw(sparklineQuery, currentArgs...).Scan(&sparkline)
+		result.Sparkline = sparkline
 	}
-	if changePercent > 0 {
-		result.Trend = "Up"
-	} else if changePercent == 0 {
-		result.Trend = "Equal"
-	} else {
-		result.Trend = "Down"
-	}
-
-	result.Total = current
-	result.Percent = changePercent
-
-	var sparkline []dto.ResponseSparkline
-	// detail untuk sparkline
-	db.Raw(`
-	SELECT tanggal, SUM(penjualan) AS total
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-	GROUP BY tanggal
-	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
-
-	result.Sparkline = sparkline
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -305,68 +431,93 @@ func GetDashboardChatConvertionRate(c *gin.Context) {
 		return
 	}
 
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	var current, previous float64
 
-	// total penjualan periode sekarang
-	db.Raw(`
-	SELECT
-    CASE 
-        WHEN COALESCE(SUM(chat_dibalas), 0) = 0 THEN 0
-        ELSE (COALESCE(SUM(total_pembeli), 0)::float 
-             / COALESCE(SUM(chat_dibalas), 0)::float) * 100
-    END AS current
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, dateFrom, dateTo).Scan(&current)
+	if marketplace.Name == constant.ShopeeConst {
+		totalQuery := `
+		SELECT
+		CASE 
+			WHEN COALESCE(SUM(chat_dibalas), 0) = 0 THEN 0
+			ELSE (COALESCE(SUM(total_pembeli), 0)::float 
+				/ COALESCE(SUM(chat_dibalas), 0)::float) * 100
+		END AS current
+		FROM shopee_data_upload_chat_details
+    	WHERE tanggal BETWEEN ? AND ?
+		`
+		currentArgs := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
 
-	// cari range periode sebelumnya
-	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
-	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
-	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+		if input.StoreId != 0 {
+			totalQuery += " AND store_id = ?"
+			currentArgs = append(currentArgs, input.StoreId)
+		}
 
-	// total periode sebelumnya
-	db.Raw(`
-	SELECT
-     CASE 
-        WHEN COALESCE(SUM(chat_dibalas), 0) = 0 THEN 0
-        ELSE (COALESCE(SUM(total_pembeli), 0)::float 
-             / COALESCE(SUM(chat_dibalas), 0)::float) * 100
-    END AS current
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+		// total penjualan periode sekarang
+		db.Raw(totalQuery, currentArgs...).Scan(&current)
 
-	// hitung persentase naik / turun
-	changePercent := 0.0
-	if previous > 0 {
-		changePercent = ((current - previous) / previous) * 100
-	}
-	if changePercent > 0 {
-		result.Trend = "Up"
-	} else if changePercent == 0 {
-		result.Trend = "Equal"
-	} else {
-		result.Trend = "Down"
-	}
+		// cari range periode sebelumnya
+		days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+		periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+		periodBeforeTo := dateTo.AddDate(0, 0, -days)
 
-	result.Total = current
-	result.Percent = changePercent
+		// total periode sebelumnya
+		previousArgs := []interface{}{
+			periodBeforeFrom,
+			periodBeforeTo,
+		}
 
-	var sparkline []dto.ResponseSparkline
-	// detail untuk sparkline
-	db.Raw(`
-	SELECT 
+		if input.StoreId != 0 {
+			previousArgs = append(previousArgs, input.StoreId)
+		}
+
+		// total periode sebelumnya
+		db.Raw(totalQuery, previousArgs...).Scan(&previous)
+
+		// hitung persentase naik / turun
+		changePercent := 0.0
+		if previous > 0 {
+			changePercent = ((current - previous) / previous) * 100
+		}
+		if changePercent > 0 {
+			result.Trend = "Up"
+		} else if changePercent == 0 {
+			result.Trend = "Equal"
+		} else {
+			result.Trend = "Down"
+		}
+
+		result.Total = current
+		result.Percent = changePercent
+
+		sparklineQuery := `
+		SELECT 
 		tanggal,
         CASE 
             WHEN SUM(chat_dibalas) = 0 THEN 0
         	ELSE (SUM(total_pembeli)::float / SUM(chat_dibalas)::float) * 100
         END AS total
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-	GROUP BY tanggal
-	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?`
 
-	result.Sparkline = sparkline
+		if input.StoreId != 0 {
+			sparklineQuery += " AND store_id = ?"
+		}
+
+		sparklineQuery += " GROUP BY tanggal ORDER BY tanggal ASC"
+
+		var sparkline []dto.ResponseSparkline
+		// detail untuk sparkline
+		db.Raw(sparklineQuery, currentArgs...).Scan(&sparkline)
+		result.Sparkline = sparkline
+	}
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -389,68 +540,94 @@ func GetDashboardChatPersentaseChat(c *gin.Context) {
 		return
 	}
 
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	var current, previous float64
 
-	// total penjualan periode sekarang
-	db.Raw(`
-	SELECT
-    CASE 
-        WHEN COALESCE(SUM(jumlah_chat), 0) = 0 THEN 0
-        ELSE (COALESCE(SUM(chat_dibalas), 0)::float 
-             / COALESCE(SUM(jumlah_chat), 0)::float) * 100
-    END AS current
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, dateFrom, dateTo).Scan(&current)
+	if marketplace.Name == constant.ShopeeConst {
+		// total penjualan periode sekarang
+		totalQuery := `
+		SELECT
+		CASE 
+			WHEN COALESCE(SUM(jumlah_chat), 0) = 0 THEN 0
+			ELSE (COALESCE(SUM(chat_dibalas), 0)::float 
+				/ COALESCE(SUM(jumlah_chat), 0)::float) * 100
+		END AS current
+		FROM shopee_data_upload_chat_details
+    	WHERE tanggal BETWEEN ? AND ?
+		`
+		currentArgs := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
 
-	// cari range periode sebelumnya
-	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
-	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
-	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+		if input.StoreId != 0 {
+			totalQuery += " AND store_id = ?"
+			currentArgs = append(currentArgs, input.StoreId)
+		}
 
-	// total periode sebelumnya
-	db.Raw(`
-	SELECT
-     CASE 
-        WHEN COALESCE(SUM(jumlah_chat), 0) = 0 THEN 0
-        ELSE (COALESCE(SUM(chat_dibalas), 0)::float 
-             / COALESCE(SUM(jumlah_chat), 0)::float) * 100
-    END AS current
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+		// total penjualan periode sekarang
+		db.Raw(totalQuery, currentArgs...).Scan(&current)
 
-	// hitung persentase naik / turun
-	changePercent := 0.0
-	if previous > 0 {
-		changePercent = ((current - previous) / previous) * 100
-	}
-	if changePercent > 0 {
-		result.Trend = "Up"
-	} else if changePercent == 0 {
-		result.Trend = "Equal"
-	} else {
-		result.Trend = "Down"
-	}
+		// cari range periode sebelumnya
+		days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+		periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+		periodBeforeTo := dateTo.AddDate(0, 0, -days)
 
-	result.Total = current
-	result.Percent = changePercent
+		// total periode sebelumnya
+		previousArgs := []interface{}{
+			periodBeforeFrom,
+			periodBeforeTo,
+		}
 
-	var sparkline []dto.ResponseSparkline
-	// detail untuk sparkline
-	db.Raw(`
-	SELECT 
+		if input.StoreId != 0 {
+			previousArgs = append(previousArgs, input.StoreId)
+		}
+
+		// total periode sebelumnya
+		db.Raw(totalQuery, previousArgs...).Scan(&previous)
+
+		// hitung persentase naik / turun
+		changePercent := 0.0
+		if previous > 0 {
+			changePercent = ((current - previous) / previous) * 100
+		}
+		if changePercent > 0 {
+			result.Trend = "Up"
+		} else if changePercent == 0 {
+			result.Trend = "Equal"
+		} else {
+			result.Trend = "Down"
+		}
+
+		result.Total = current
+		result.Percent = changePercent
+
+		sparklineQuery := `
+		SELECT 
 		tanggal,
         CASE 
             WHEN SUM(jumlah_chat) = 0 THEN 0
         	ELSE (SUM(chat_dibalas)::float / SUM(jumlah_chat)::float) * 100
         END AS total
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-	GROUP BY tanggal
-	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?`
 
-	result.Sparkline = sparkline
+		if input.StoreId != 0 {
+			sparklineQuery += " AND store_id = ?"
+		}
+
+		sparklineQuery += " GROUP BY tanggal ORDER BY tanggal ASC"
+
+		var sparkline []dto.ResponseSparkline
+		// detail untuk sparkline
+		db.Raw(sparklineQuery, currentArgs...).Scan(&sparkline)
+		result.Sparkline = sparkline
+	}
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -473,81 +650,105 @@ func GetDashboardRataRataWaktuRespon(c *gin.Context) {
 		return
 	}
 
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	var current, previous string
 
-	// total penjualan periode sekarang
-	db.Raw(`
-	SELECT
-    COALESCE(
-        SUM(
-            COALESCE(chat_dibalas, 0) * COALESCE(waktu_respon_rata_rata, INTERVAL '0')
-        ),
-        INTERVAL '0'
-    ) AS current
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, dateFrom, dateTo).Scan(&current)
+	if marketplace.Name == constant.ShopeeConst {
+		// total penjualan periode sekarang
+		totalQuery := `
+		SELECT
+		COALESCE(
+			SUM(
+				COALESCE(chat_dibalas, 0) * COALESCE(waktu_respon_rata_rata, INTERVAL '0')
+			),
+			INTERVAL '0'
+		) AS current
+		FROM shopee_data_upload_chat_details
+    	WHERE tanggal BETWEEN ? AND ?
+		`
+		currentArgs := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
 
-	// cari range periode sebelumnya
-	days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
-	periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
-	periodBeforeTo := dateTo.AddDate(0, 0, -days)
+		if input.StoreId != 0 {
+			totalQuery += " AND store_id = ?"
+			currentArgs = append(currentArgs, input.StoreId)
+		}
 
-	// total periode sebelumnya
-	db.Raw(`
-	SELECT
-    COALESCE(
-        SUM(
-            COALESCE(chat_dibalas, 0) * COALESCE(waktu_respon_rata_rata, INTERVAL '0')
-        ),
-        INTERVAL '0'
-    ) AS previous
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-`, input.StoreId, periodBeforeFrom, periodBeforeTo).Scan(&previous)
+		// total penjualan periode sekarang
+		db.Raw(totalQuery, currentArgs...).Scan(&current)
 
-	currentDur, _ := utils.ParseIntervalToDuration(current)
+		// cari range periode sebelumnya
+		days := int(dateTo.Sub(dateFrom).Hours()/24) + 1
+		periodBeforeFrom := dateFrom.AddDate(0, 0, -days)
+		periodBeforeTo := dateTo.AddDate(0, 0, -days)
 
-	previousDur, _ := utils.ParseIntervalToDuration(previous)
+		previousArgs := []interface{}{
+			periodBeforeFrom,
+			periodBeforeTo,
+		}
 
-	// hitung persentase naik / turun
-	currentSec := currentDur.Seconds()
-	previousSec := previousDur.Seconds()
+		if input.StoreId != 0 {
+			previousArgs = append(previousArgs, input.StoreId)
+		}
 
-	changePercent := 0.0
-	if previousSec > 0 {
-		changePercent = ((currentSec - previousSec) / previousSec) * 100
-	}
+		// total periode sebelumnya
+		db.Raw(totalQuery, previousArgs...).Scan(&previous)
 
-	if changePercent > 0 {
-		result.Trend = "Up"
-	} else if changePercent == 0 {
-		result.Trend = "Equal"
-	} else {
-		result.Trend = "Down"
-	}
+		currentDur, _ := utils.ParseIntervalToDuration(current)
 
-	result.Total = current
-	result.Percent = changePercent
+		previousDur, _ := utils.ParseIntervalToDuration(previous)
 
-	var sparkline []dto.ResponseSparklineTimeDuration
-	// detail untuk sparkline
-	db.Raw(`
-	SELECT 
+		// hitung persentase naik / turun
+		currentSec := currentDur.Seconds()
+		previousSec := previousDur.Seconds()
+
+		changePercent := 0.0
+		if previousSec > 0 {
+			changePercent = ((currentSec - previousSec) / previousSec) * 100
+		}
+
+		if changePercent > 0 {
+			result.Trend = "Up"
+		} else if changePercent == 0 {
+			result.Trend = "Equal"
+		} else {
+			result.Trend = "Down"
+		}
+
+		result.Total = current
+		result.Percent = changePercent
+
+		sparklineQuery := `
+		SELECT 
 		tanggal,
         COALESCE(
-        SUM(
-            COALESCE(chat_dibalas, 0) 
-            * COALESCE(waktu_respon_rata_rata, INTERVAL '0')
-        ),
-        INTERVAL '0'
-    ) AS total
-	FROM shopee_data_upload_chat_details
-	WHERE store_id = ? AND tanggal BETWEEN ? AND ?
-	GROUP BY tanggal
-	ORDER BY tanggal ASC;`, input.StoreId, dateFrom, dateTo).Scan(&sparkline)
+			SUM(
+				COALESCE(chat_dibalas, 0) 
+				* COALESCE(waktu_respon_rata_rata, INTERVAL '0')
+			),
+			INTERVAL '0'
+    	) AS total
+		FROM shopee_data_upload_chat_details
+		WHERE tanggal BETWEEN ? AND ?`
 
-	result.Sparkline = sparkline
+		if input.StoreId != 0 {
+			sparklineQuery += " AND store_id = ?"
+		}
+
+		sparklineQuery += " GROUP BY tanggal ORDER BY tanggal ASC"
+
+		var sparkline []dto.ResponseSparklineTimeDuration
+		// detail untuk sparkline
+		db.Raw(sparklineQuery, currentArgs...).Scan(&sparkline)
+		result.Sparkline = sparkline
+	}
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -559,24 +760,46 @@ func GetDashboardChatTotalJumlahChat(c *gin.Context) {
 		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
 		return
 	}
+
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
 	db := config.DB
-	db.Raw(`
-	WITH months AS (
-		SELECT generate_series(
-			date_trunc('year', ? :: date),
-			date_trunc('year', ? :: date) + INTERVAL '11 months',
-			INTERVAL '1 month'
-		) AS month_start
-	)
-	SELECT 
-		COALESCE(SUM(sd.jumlah_chat), 0) AS jumlah_chat,
-		TRIM(TO_CHAR(m.month_start, 'FMMonth YYYY')) AS month
-	FROM months m
-	LEFT JOIN shopee_data_upload_chat_details sd 
-		ON date_trunc('month', sd.tanggal) = m.month_start AND store_id = ?
-	GROUP BY m.month_start
-	ORDER BY m.month_start;
-	`, input.DateFrom, input.DateTo, input.StoreId).Scan(&result)
+
+	if marketplace.Name == constant.ShopeeConst {
+
+		query := `
+		WITH months AS (
+			SELECT generate_series(
+				date_trunc('year', ? :: date),
+				date_trunc('year', ? :: date) + INTERVAL '11 months',
+				INTERVAL '1 month'
+			) AS month_start
+		)
+		SELECT 
+			COALESCE(SUM(sd.jumlah_chat), 0) AS jumlah_chat,
+			TRIM(TO_CHAR(m.month_start, 'FMMonth YYYY')) AS month
+		FROM months m
+		LEFT JOIN shopee_data_upload_chat_details sd 
+			ON date_trunc('month', sd.tanggal) = m.month_start
+		`
+
+		args := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
+
+		if input.StoreId != 0 {
+			query += " AND store_id = ?"
+			args = append(args, input.StoreId)
+		}
+		query += " GROUP BY m.month_start ORDER BY m.month_start"
+
+		db.Raw(query, args...).Scan(&result)
+	}
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)
 }
@@ -588,34 +811,54 @@ func GetDashboardChatRataRataWaktuResponInWeek(c *gin.Context) {
 		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
 		return
 	}
-	db := config.DB
-	db.Raw(`
-	WITH days AS (
-		SELECT generate_series(
-			date_trunc('week', ?::date),
-			date_trunc('week', ?::date) + INTERVAL '6 days',
-			INTERVAL '1 day'
-		)::date AS tanggal
-	)
-	SELECT
-		TRIM(TO_CHAR(d.tanggal, 'Day')) AS day,
-		COALESCE(
-			SUM(
-				COALESCE(s.chat_dibalas, 0)
-				* COALESCE(s.waktu_respon_rata_rata, INTERVAL '0')
-			),
-			INTERVAL '0'
-		) AS total
-	FROM days d
-	LEFT JOIN shopee_data_upload_chat_details s
-		ON s.tanggal::date = d.tanggal
-		AND s.store_id = ?
-	GROUP BY d.tanggal
-	ORDER BY d.tanggal;
-`, input.DateFrom, input.DateFrom, input.StoreId).Scan(&result)
 
-	for i := range result {
-		result[i].Day = utils.ChangeDayEnIn(result[i].Day)
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
+	db := config.DB
+
+	if marketplace.Name == constant.ShopeeConst {
+		query := `
+		WITH days AS (
+			SELECT generate_series(
+				date_trunc('week', ?::date),
+				date_trunc('week', ?::date) + INTERVAL '6 days',
+				INTERVAL '1 day'
+			)::date AS tanggal
+		)
+		SELECT
+			TRIM(TO_CHAR(d.tanggal, 'Day')) AS day,
+			COALESCE(
+				SUM(
+					COALESCE(s.chat_dibalas, 0)
+					* COALESCE(s.waktu_respon_rata_rata, INTERVAL '0')
+				),
+				INTERVAL '0'
+			) AS total
+		FROM days d
+		LEFT JOIN shopee_data_upload_chat_details s
+			ON s.tanggal::date = d.tanggal
+		`
+
+		args := []interface{}{
+			input.DateFrom,
+			input.DateFrom,
+		}
+
+		if input.StoreId != 0 {
+			query += " AND s.store_id = ?"
+			args = append(args, input.StoreId)
+		}
+		query += " GROUP BY d.tanggal ORDER BY d.tanggal"
+
+		db.Raw(query, args...).Scan(&result)
+
+		for i := range result {
+			result[i].Day = utils.ChangeDayEnIn(result[i].Day)
+		}
 	}
 
 	utils.Success(c, constant.DashboardChatConst+constant.SuccessFetch, result)

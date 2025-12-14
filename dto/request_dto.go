@@ -29,19 +29,22 @@ type RequestTenantId struct {
 }
 
 type RequestDashboardTinjauan struct {
-	StoreId  uint   `json:"store_id"`
-	DateFrom string `json:"date_from"`
-	DateTo   string `json:"date_to"`
+	StoreId       uint   `json:"store_id"`
+	MarketplaceId uint   `json:"marketplace_id"`
+	DateFrom      string `json:"date_from"`
+	DateTo        string `json:"date_to"`
 }
 
 type RequestDashboardIklan struct {
-	StoreId  uint   `json:"store_id"`
-	DateFrom string `json:"date_from"`
-	DateTo   string `json:"date_to"`
+	StoreId       uint   `json:"store_id"`
+	MarketplaceId uint   `json:"marketplace_id"`
+	DateFrom      string `json:"date_from"`
+	DateTo        string `json:"date_to"`
 }
 
 type RequestDashboardChat struct {
-	StoreId  uint   `json:"store_id"`
-	DateFrom string `json:"date_from"`
-	DateTo   string `json:"date_to"`
+	StoreId       uint   `json:"store_id"`
+	MarketplaceId uint   `json:"marketplace_id"`
+	DateFrom      string `json:"date_from"`
+	DateTo        string `json:"date_to"`
 }

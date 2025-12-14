@@ -69,3 +69,6 @@ const HistoryDataUpload = "History Data Upload"
 // Status
 const ActiveConst = "active"
 const InactiveConst = "inactive"
+
+// Marketplace
+const ShopeeConst = "Shopee"
