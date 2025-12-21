@@ -19,6 +19,13 @@ type ResponseHeaderDashboardTinjauan struct {
 	Sparkline []ResponseSparkline `json:"sparkline"`
 }
 
+type ResponseHeaderDashboardPesanan struct {
+	Total     any                 `json:"total"`
+	Percent   float64             `json:"percent"`
+	Trend     string              `json:"trend"`
+	Sparkline []ResponseSparkline `json:"sparkline"`
+}
+
 type ResponseHeaderDashboardIklan struct {
 	Total     any                 `json:"total"`
 	Percent   float64             `json:"percent"`
@@ -87,4 +94,29 @@ type ResponseTopProductDashboardIklan struct {
 	ConvertionRate float64 `json:"convertion_rate"`
 	Biaya          float64 `json:"biaya"`
 	Penjualan      float64 `json:"penjualan"`
+}
+
+type ResponseTopUsernamePembeliDashboardPesanan struct {
+	Username string `json:"username"`
+	Total    int    `json:"total"`
+}
+
+type ResponseTopMetodePembayaranDashboardPesanan struct {
+	MetodePembayaran string `json:"metode_pembayaran"`
+	Total            int    `json:"total"`
+}
+
+type ResponseStatusPesananDashboardPesanan struct {
+	StatusPesanan string `json:"status_pesanan"`
+	Total         int    `json:"total"`
+}
+
+type ResponseOpsiPengirimanDashboardPesanan struct {
+	OpsiPengiriman string `json:"opsi_pengiriman"`
+	Total          int    `json:"total"`
+}
+
+type ResponseMetodePickupDashboardPesanan struct {
+	MetodePickup string `json:"metode_pickup"`
+	Total        int    `json:"total"`
 }

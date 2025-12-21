@@ -35,6 +35,13 @@ type RequestDashboardTinjauan struct {
 	DateTo        string `json:"date_to"`
 }
 
+type RequestDashboardPesanan struct {
+	StoreId       uint   `json:"store_id"`
+	MarketplaceId uint   `json:"marketplace_id"`
+	DateFrom      string `json:"date_from"`
+	DateTo        string `json:"date_to"`
+}
+
 type RequestDashboardIklan struct {
 	StoreId       uint   `json:"store_id"`
 	MarketplaceId uint   `json:"marketplace_id"`

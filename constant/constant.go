@@ -63,6 +63,7 @@ const StoreConst = "Store"
 const DashboardTinjauanConst = "Dashboard Tinjauan"
 const DashboardIklanConst = "Dashboard Iklan"
 const DashboardChatConst = "Dashboard Chat"
+const DashboardPesananConst = "Dashboard Pesanan"
 const MarketplaceConst = "Marketplace"
 const HistoryDataUpload = "History Data Upload"
 

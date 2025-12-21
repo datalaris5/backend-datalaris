@@ -22,6 +22,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		auth.POST("/upload/tinjauan/:id", controllers.UploadExcelShopeeTinjauan)
 		auth.POST("/upload/iklan/:id", controllers.UploadCsvShopeeIklan)
 		auth.POST("/upload/chat/:id", controllers.UploadExcelShopeeChat)
+		auth.POST("/upload/pesanan/:id", controllers.UploadExcelShopeePesanan)
 
 		auth.POST("/dashboard-tinjauan/total-penjualan", controllers.GetDashboardTinjauanTotalPenjualan)
 		auth.POST("/dashboard-tinjauan/total-pesanan", controllers.GetDashboardTinjauanTotalPesanan)
@@ -50,6 +51,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		auth.POST("/dashboard-chat/avg-waktu-respon", controllers.GetDashboardRataRataWaktuRespon)
 		auth.POST("/dashboard-chat/total-jumlah-chat", controllers.GetDashboardChatTotalJumlahChat)
 		auth.POST("/dashboard-chat/avg-waktu-respon/in-week", controllers.GetDashboardChatRataRataWaktuResponInWeek)
+
+		auth.POST("/dashboard-pesanan/total-penjualan", controllers.GetDashboardPesananTotalPenjualan)
+		auth.POST("/dashboard-pesanan/total-pesanan", controllers.GetDashboardPesananTotalPesanan)
+		auth.POST("/dashboard-pesanan/top-username-pembeli", controllers.GetDashboardPesananTopUsernamePembeli)
+		auth.POST("/dashboard-pesanan/top-metode-pembayaran", controllers.GetDashboardPesananTopMetodePembayaran)
+		auth.POST("/dashboard-pesanan/status-pesanan", controllers.GetDashboardPesananStatusPesanan)
+		auth.POST("/dashboard-pesanan/opsi-pengiriman", controllers.GetDashboardPesananOpsiPengiriman)
+		auth.POST("/dashboard-pesanan/metode-pickup", controllers.GetDashboardPesananMetodePickup)
 
 		auth.GET("/history-data-upload", controllers.GetHistoryDataUpload)
 

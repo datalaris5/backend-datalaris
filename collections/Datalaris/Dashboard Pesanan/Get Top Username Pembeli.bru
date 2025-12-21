@@ -1,0 +1,28 @@
+meta {
+  name: Get Top Username Pembeli
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/v1/api/admin/dashboard-pesanan/top-username-pembeli
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "store_id":1,
+    "marketplace_id":1,
+    "date_from":"2025-01-01",
+    "date_to":"2025-12-31"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

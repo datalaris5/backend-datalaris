@@ -368,6 +368,122 @@ func UploadExcelShopeeChat(c *gin.Context) {
 	utils.Success(c, constant.SuccessUploadFile, nil)
 }
 
+func UploadExcelShopeePesanan(c *gin.Context) {
+	storeId := c.Param("id")
+	// c.FormFile hanya mengembalikan 2 nilai: *multipart.FileHeader, error
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		utils.Error(c, http.StatusBadRequest, constant.ErrorUploadFile, nil)
+		return
+	}
+
+	_, err = services.GetWhereFirst[models.Store]("id = ?", storeId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.StoreConst+constant.ErrorNotFound, nil)
+		return
+	}
+
+	// Validasi ekstensi
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	if ext != ".xlsx" && ext != ".xls" {
+		utils.Error(c, http.StatusBadRequest, constant.ErrorInvalidFileType, nil)
+		return
+	}
+
+	// Simpan file ke folder uploads
+	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorCreateDir, nil)
+		return
+	}
+
+	dstPath := filepath.Join("uploads", fileHeader.Filename)
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorSaveFile, nil)
+		return
+	}
+	defer dst.Close()
+
+	// Buka file dari FileHeader
+	src, err := fileHeader.Open()
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorOpenFile, nil)
+		return
+	}
+	defer src.Close()
+
+	_, err = io.Copy(dst, src)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, constant.ErrorCopyFile, nil)
+		return
+	}
+
+	details := readExcelShopeePesanan(dstPath)
+
+	userID, ok := c.Get("user_id")
+	if !ok {
+		utils.Error(c, http.StatusUnauthorized, "User ID not found", nil)
+		return
+	}
+
+	ctx := context.WithValue(c.Request.Context(), utils.UserIDKey, userID)
+
+	db := config.DB
+	err = services.WithTransaction(db.WithContext(ctx), func(tx *gorm.DB) error {
+
+		// startDate, err := parseTanggalShopee(details[0][10])
+		// if err != nil {
+		// 	return fmt.Errorf("invalid first date: %w", err)
+		// }
+		// endDate, err := parseTanggalShopee(details[len(details)-1][10])
+		// if err != nil {
+		// 	return fmt.Errorf("invalid last date: %w", err)
+		// }
+
+		// // 1. Delete data existing untuk rentang tanggal upload
+		// _, err = tx.
+		// 	Where("store_id = ? AND tanggal BETWEEN ? AND ?", storeId, startDate, endDate).
+		// 	Delete(&models.ShopeeDataUploadChatDetail{}).
+		// 	Rows()
+		// if err != nil {
+		// 	return err
+		// }
+
+		// 2. Insert ulang row baru
+		for i := range details {
+			detail, err := ConvertDetailShopeePesananFromRow(details[i], storeId)
+			if err != nil {
+				return err
+			}
+
+			_, err = services.Save[models.ShopeeDataUploadPesananDetail](*detail, tx)
+			if err != nil {
+				return err
+			}
+		}
+
+		// 3. Insert history log
+		history := models.HistoryDataUpload{
+			StoreId:  utils.ParseUintParam(storeId),
+			Filename: fileHeader.Filename,
+			Status:   constant.Success,
+		}
+		_, err = services.Save[models.HistoryDataUpload](history, tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		utils.Error(c, http.StatusBadRequest, "Transaction failed", utils.ParseDBError(err))
+		return
+	}
+
+	utils.Success(c, constant.SuccessUploadFile, nil)
+}
+
 func readExcelShopeeTinjauan(path string) [][]string {
 	f, err := excelize.OpenFile(path)
 	if err != nil {
@@ -613,6 +729,135 @@ func ConvertDetailShopeeChatFromRow(row []string, storeId string) (*models.Shope
 	}, nil
 }
 
+func readExcelShopeePesanan(path string) [][]string {
+	f, err := excelize.OpenFile(path)
+	if err != nil {
+		fmt.Println("Error baca excel:", err)
+		return nil
+	}
+
+	sheet := "orders"
+
+	// Cek apakah sheet ada
+	sheets := f.GetSheetList()
+	found := false
+	for _, s := range sheets {
+		if s == sheet {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		fmt.Println("Sheet", sheet, "tidak ditemukan")
+		return nil
+	}
+
+	rows, err := f.GetRows(sheet)
+	if err != nil {
+		fmt.Println("Gagal baca rows:", err)
+		return nil
+	}
+
+	var details [][]string
+
+	for i := range rows {
+		if i < 1 {
+			continue
+		} else {
+			details = append(details, rows[i])
+		}
+	}
+
+	return details
+
+}
+
+func ConvertDetailShopeePesananFromRow(row []string, storeId string) (*models.ShopeeDataUploadPesananDetail, error) {
+	// pastikan minimal ada kolom
+	if len(row) < 48 {
+		return nil, fmt.Errorf("jumlah kolom summary tidak sesuai")
+	}
+
+	pesananHarusDikirimkanSebelum, err := parseTanggalShopeePtr(row[7]) // contoh format Shopee dd/mm/yyyy
+	if err != nil {
+		return nil, err
+	}
+
+	waktuPengirimanDiatur, err := parseTanggalShopeePtr(row[8]) // contoh format Shopee dd/mm/yyyy
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse tanggal
+	waktuPesananDibuat, err := parseTanggalShopeePtr(row[9]) // contoh format Shopee dd/mm/yyyy
+	if err != nil {
+		return nil, err
+	}
+
+	waktuPembayaranDilakukan, err := parseTanggalShopeePtr(row[10]) // contoh format Shopee dd/mm/yyyy
+	if err != nil {
+		return nil, err
+	}
+
+	// waktuPesananSelesai, err := parseTanggalShopeePtr(row[48]) // contoh format Shopee dd/mm/yyyy
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return &models.ShopeeDataUploadPesananDetail{
+		StoreID:                       utils.ParseUintParam(storeId),
+		NoPesanan:                     row[0],
+		StatusPesanan:                 row[1],
+		AlasanPembatalan:              row[2],
+		StatusPembatalan:              row[3],
+		NoResi:                        row[4],
+		OpsiPengiriman:                row[5],
+		CounterPickup:                 row[6],
+		PesananHarusDikirimkanSebelum: pesananHarusDikirimkanSebelum,
+		WaktuPengirimanDiatur:         waktuPengirimanDiatur,
+		WaktuPesananDibuat:            waktuPesananDibuat,
+		WaktuPembayaranDilakukan:      waktuPembayaranDilakukan,
+		MetodePembayaran:              row[11],
+		SkuInduk:                      row[12],
+		NamaProduk:                    row[13],
+		NomorReferensiSku:             row[14],
+		NamaVariasi:                   row[15],
+		HargaAwal:                     decimal.RequireFromString(CleanNumber(row[16])),
+		HargaSetelahDiskon:            decimal.RequireFromString(CleanNumber(row[17])),
+		Jumlah:                        toInt(row[18]),
+		ReturnedQuantity:              toInt(row[19]),
+		TotalHargaProduk:              decimal.RequireFromString(CleanNumber(row[20])),
+		TotalDiskon:                   decimal.RequireFromString(CleanNumber(row[21])),
+		DiskonDariPenjual:             decimal.RequireFromString(CleanNumber(row[22])),
+		DiskonDariShopee:              decimal.RequireFromString(CleanNumber(row[23])),
+		BeratProduk:                   row[24],
+		JumlahProdukDipesan:           toInt(row[25]),
+		TotalBerat:                    row[26],
+		VoucherDitanggungPenjual:      decimal.RequireFromString(CleanNumber(row[27])),
+		CashbackCoin:                  decimal.RequireFromString(CleanNumber(row[28])),
+		VoucherDitanggungShopee:       decimal.RequireFromString(CleanNumber(row[29])),
+		PaketDiskon:                   row[30],
+		PaketDiskonDariShopee:         decimal.RequireFromString(CleanNumber(row[31])),
+		PaketDiskonDariPenjual:        decimal.RequireFromString(CleanNumber(row[32])),
+		PotonganKoinShopee:            decimal.RequireFromString(CleanNumber(row[33])),
+		DiskonKartuKredit:             decimal.RequireFromString(CleanNumber(row[34])),
+		OngkosKirimPembeli:            decimal.RequireFromString(CleanNumber(row[35])),
+		EstimasiPotonganOngkir:        decimal.RequireFromString(CleanNumber(row[36])),
+		OngkosKirimPengembalian:       decimal.RequireFromString(CleanNumber(row[37])),
+		TotalPembayaran:               decimal.RequireFromString(CleanNumber(row[38])),
+		PerkiraanOngkosKirim:          decimal.RequireFromString(CleanNumber(row[39])),
+		CatatanDariPembeli:            row[40],
+		Catatan:                       row[41],
+		UsernamePembeli:               row[42],
+		NamaPenerima:                  row[43],
+		NoTelepon:                     row[44],
+		AlamatPengiriman:              row[45],
+		Kota:                          row[46],
+		Provinsi:                      row[47],
+	}, nil
+}
+
 func parseDateRange(raw string) (time.Time, time.Time, error) {
 	parts := strings.Split(raw, "-")
 	if len(parts) != 2 {
@@ -666,6 +911,7 @@ func parseTanggalShopee(s string) (time.Time, error) {
 		"02-01-2006",
 		"02/01/2006 15:04",
 		"2006/01/02",
+		"2006-01-02 15:04",
 	}
 
 	for _, f := range formats {
@@ -674,4 +920,17 @@ func parseTanggalShopee(s string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("format tanggal tidak didukung: %s", s)
+}
+
+func parseTanggalShopeePtr(s string) (*time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "-" {
+		return nil, nil
+	}
+
+	t, err := parseTanggalShopee(s)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }
