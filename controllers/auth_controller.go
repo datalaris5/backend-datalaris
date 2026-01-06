@@ -41,7 +41,7 @@ func Login(c *gin.Context) {
 
 	user, err := services.GetWhereFirst[models.User]("email = ?", input.Email)
 	if err == gorm.ErrRecordNotFound {
-		utils.Error(c, http.StatusNotFound, constant.TenantConst+constant.ErrorNotFound, nil)
+		utils.Error(c, http.StatusNotFound, constant.UserConst+constant.ErrorNotFound, nil)
 		return
 	}
 
@@ -57,7 +57,7 @@ func Login(c *gin.Context) {
 
 	role, err := services.GetById[models.Role](*user.RoleID, c)
 	if err == gorm.ErrRecordNotFound {
-		utils.Error(c, http.StatusNotFound, constant.TenantConst+constant.ErrorNotFound, nil)
+		utils.Error(c, http.StatusNotFound, constant.RoleConst+constant.ErrorNotFound, nil)
 		return
 	}
 
