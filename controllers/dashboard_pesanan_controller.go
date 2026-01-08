@@ -412,3 +412,46 @@ func GetDashboardPesananMetodePickup(c *gin.Context) {
 
 	utils.Success(c, constant.DashboardPesananConst+constant.SuccessFetch, result)
 }
+
+func GetDashboardPesananByDay(c *gin.Context) {
+	var result []dto.ResponseTotalPesananByDayDashboardPesanan
+	input, errBind := utils.BindJSON[dto.RequestDashboardPesanan](c)
+	if errBind != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid input", errBind.Error())
+		return
+	}
+
+	marketplace, err := services.GetWhereFirst[models.Marketplace]("id = ?", input.MarketplaceId)
+	if err == gorm.ErrRecordNotFound {
+		utils.Error(c, http.StatusNotFound, constant.MarketplaceConst+constant.ErrorNotFound, nil)
+		return
+	}
+
+	db := config.DB
+
+	if marketplace.Name == constant.ShopeeConst {
+
+		query := `
+		SELECT
+    EXTRACT(ISODOW FROM waktu_pesanan_dibuat) AS no,
+    TRIM(TO_CHAR(waktu_pesanan_dibuat, 'Day')) AS day,
+    COUNT(*) AS total
+	FROM shopee_data_upload_pesanan_details
+	WHERE waktu_pesanan_dibuat BETWEEN ? AND ?  `
+
+		args := []interface{}{
+			input.DateFrom,
+			input.DateTo,
+		}
+
+		if input.StoreId != 0 {
+			query += " AND store_id = ?"
+			args = append(args, input.StoreId)
+		}
+		query += " GROUP BY no, day ORDER BY no;"
+
+		db.Raw(query, args...).Scan(&result)
+	}
+
+	utils.Success(c, constant.DashboardPesananConst+constant.SuccessFetch, result)
+}

@@ -120,3 +120,9 @@ type ResponseMetodePickupDashboardPesanan struct {
 	MetodePickup string `json:"metode_pickup"`
 	Total        int    `json:"total"`
 }
+
+type ResponseTotalPesananByDayDashboardPesanan struct {
+	No    int    `json:"no"`
+	Day   string `json:"day"`
+	Total int    `json:"total"`
+}
