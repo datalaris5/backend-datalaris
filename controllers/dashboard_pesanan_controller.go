@@ -93,7 +93,7 @@ func GetDashboardPesananTotalPenjualan(c *gin.Context) {
 		result.Percent = changePercent
 
 		sparklineQuery := `
-		SELECT waktu_pesanan_dibuat, SUM(total_harga_produk) AS total
+		SELECT waktu_pesanan_dibuat AS tanggal, SUM(total_harga_produk) AS total
 		FROM shopee_data_upload_pesanan_details
 		WHERE waktu_pesanan_dibuat BETWEEN ? AND ?`
 
@@ -191,7 +191,7 @@ func GetDashboardPesananTotalPesanan(c *gin.Context) {
 		result.Percent = changePercent
 
 		sparklineQuery := `
-		SELECT waktu_pesanan_dibuat, SUM(jumlah) AS total
+		SELECT waktu_pesanan_dibuat AS tanggal, SUM(jumlah) AS total
 		FROM shopee_data_upload_pesanan_details
 		WHERE waktu_pesanan_dibuat BETWEEN ? AND ?`
 
